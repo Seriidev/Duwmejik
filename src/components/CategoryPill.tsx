@@ -50,7 +50,7 @@ export function CategoryPill({ category, active = false }: { category: Category;
   return (
     <Link
       to={`/catalog?category=${category.id}`}
-      className={`flex min-h-[72px] items-center gap-3 rounded-2xl bg-white px-3.5 py-3 shadow-[0_8px_24px_rgba(55,70,120,0.06)] transition hover:shadow-[0_12px_28px_rgba(55,70,120,0.1)] ${active ? 'ring-2 ring-blue-600' : 'ring-1 ring-white'}`}
+      className={`flex h-full min-h-[72px] w-full items-center gap-3 rounded-2xl bg-white px-3.5 py-3 shadow-[0_8px_24px_rgba(55,70,120,0.06)] transition hover:shadow-[0_12px_28px_rgba(55,70,120,0.1)] ${active ? 'ring-2 ring-blue-600' : 'ring-1 ring-white'}`}
     >
       <span
         className="category-icon grid size-10 shrink-0 place-items-center rounded-xl"

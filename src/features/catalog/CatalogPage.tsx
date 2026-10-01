@@ -54,11 +54,11 @@ export function CatalogPage() {
         </Reveal>
         <div className="mx-auto mt-5 max-w-6xl px-4">
           <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-            <Reveal>
+            <Reveal className="h-full">
             <button
               type="button"
               onClick={() => setFilter('category', '')}
-              className={`flex min-h-[72px] items-center gap-3 rounded-2xl bg-white px-3.5 py-3 text-left shadow-[0_8px_24px_rgba(55,70,120,0.06)] transition hover:shadow-[0_12px_28px_rgba(55,70,120,0.1)] ${query.category ? 'ring-1 ring-white' : 'ring-2 ring-blue-600'}`}
+              className={`flex h-full w-full min-h-[72px] items-center gap-3 rounded-2xl bg-white px-3.5 py-3 text-left shadow-[0_8px_24px_rgba(55,70,120,0.06)] transition hover:shadow-[0_12px_28px_rgba(55,70,120,0.1)] ${query.category ? 'ring-1 ring-white' : 'ring-2 ring-blue-600'}`}
             >
               <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-600">
                 <HiOutlineSquares2X2 className="size-5" aria-hidden="true" />
@@ -67,7 +67,7 @@ export function CatalogPage() {
             </button>
             </Reveal>
             {categories.map((category, index) => (
-              <Reveal key={category.id} delay={(index % 5) * 60}>
+              <Reveal key={category.id} delay={(index % 5) * 60} className="h-full">
                 <CategoryPill category={category} active={query.category === category.id} />
               </Reveal>
             ))}

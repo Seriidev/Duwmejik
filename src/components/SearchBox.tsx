@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TemplateArt } from '@/components/TemplateArt'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { formatPrice } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { useCatalogStore } from '@/store/useCatalogStore'
 
@@ -121,9 +120,11 @@ export function SearchBox({
                   seed={item.seed}
                   className="size-12 shrink-0 rounded-lg"
                 />
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{item.title}</span>
-                  <span className="text-sm text-muted">{formatPrice(item.price)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-slate-900">{item.title}</span>
+                  <span className="block truncate text-sm text-slate-500">
+                    {categories.find((entry) => entry.id === item.categoryId)?.title}
+                  </span>
                 </span>
               </button>
             </li>

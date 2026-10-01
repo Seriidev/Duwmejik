@@ -23,7 +23,7 @@ export function TemplateArt({
   const tilt = (seed % 7) - 3
   return (
     <div
-      className={cn('relative block w-full overflow-hidden', className)}
+      className={cn('relative block overflow-hidden', className)}
       style={{
         backgroundImage:
           background ??

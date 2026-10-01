@@ -106,7 +106,7 @@ function AboutBanner({ locale }: { locale: Locale }) {
   useEffect(() => {
     const timer = window.setInterval(() => {
       setIndex((current) => (current + 1) % banners.length)
-    }, 4000)
+    }, 3000)
     return () => window.clearInterval(timer)
   }, [])
 
