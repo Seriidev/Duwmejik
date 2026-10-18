@@ -1,5 +1,7 @@
+'use client'
+
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { Gate } from '@/components/Gate'
 import { Badge } from '@/components/ui/Badge'
 import { Button, buttonClass } from '@/components/ui/Button'
@@ -49,7 +51,7 @@ export function AdminPage() {
         title="Админка закрыта"
         text="Нужна роль администратора. Демо: admin@duwmejik.ru, пароль demo."
         action={
-          <Link to="/login" state={{ from: '/admin' }} className={buttonClass()}>
+          <Link href="/login?from=%2Fadmin" className={buttonClass()}>
             Войти как админ
           </Link>
         }

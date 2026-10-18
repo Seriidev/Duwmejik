@@ -1,6 +1,8 @@
+'use client'
+
 import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, CreditCard, LayoutTemplate, Package, PenLine, Star } from 'lucide-react'
+import Link from 'next/link'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { CategoryPill } from '@/components/CategoryPill'
 import { ProductCard } from '@/components/ProductCard'
 import { SearchBox } from '@/components/SearchBox'
@@ -15,6 +17,7 @@ import { PreviewModal } from '@/features/catalog/PreviewModal'
 import { AnimatedHeroTitle } from '@/features/home/AnimatedHeroTitle'
 import { hasHeroBanner, HeroBanner } from '@/features/home/HeroBanner'
 import { cn } from '@/lib/cn'
+import { isPrintWork } from '@/data/catalog'
 import { useCatalogStore } from '@/store/useCatalogStore'
 
 const featured = [
@@ -92,7 +95,7 @@ export function HomePage() {
         <div className="pointer-events-none absolute inset-x-0 -top-28 bottom-0 bg-[radial-gradient(ellipse_at_75%_0%,rgba(96,165,250,0.45),transparent_58%),radial-gradient(ellipse_at_15%_30%,rgba(167,139,250,0.28),transparent_52%)]" />
         <div
           className={cn(
-            'relative mx-auto flex w-full max-w-[1180px] flex-col items-center justify-center px-4 pb-8 pt-10 sm:px-6',
+            'relative mx-auto flex w-full max-w-[1180px] -translate-y-3 flex-col items-center justify-center px-4 pb-8 pt-4 sm:-translate-y-6 sm:px-6',
             hasHeroBanner && 'lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.92fr)] lg:items-center lg:gap-10',
           )}
         >
@@ -118,8 +121,6 @@ export function HomePage() {
         </div>
       </section>
 
-      <AboutSection />
-
       <section className="mx-auto max-w-[1180px] px-4 py-12 sm:px-6">
         <Reveal>
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -128,7 +129,7 @@ export function HomePage() {
             <h2 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">Популярные категории</h2>
             <p className="mt-2 text-slate-500">Крупные направления, с которых чаще всего начинают заказ.</p>
           </div>
-          <Link to="/catalog" className="inline-flex items-center gap-1 text-sm font-medium text-violet-600">
+          <Link href="/catalog" className="inline-flex items-center gap-1 text-sm font-medium text-violet-600">
             Смотреть все
             <ArrowRight className="size-4" />
           </Link>
@@ -137,7 +138,7 @@ export function HomePage() {
         <div className="grid gap-4 lg:grid-cols-2">
           {featured.map((item, index) => (
             <Reveal key={item.id} delay={index * 90}>
-            <Link to={`/catalog?category=${item.id}`} className={cn('relative flex min-h-[250px] overflow-hidden rounded-[28px] p-7 shadow-[0_16px_40px_rgba(70,90,150,0.08)]', item.className)}>
+            <Link href={`/catalog?category=${item.id}`} className={cn('relative flex min-h-[250px] overflow-hidden rounded-[28px] p-7 shadow-[0_16px_40px_rgba(70,90,150,0.08)]', item.className)}>
               <div className="relative z-10 flex max-w-[16rem] flex-col">
                 <span className="grid size-10 place-items-center rounded-xl bg-white/80 text-violet-600 shadow-sm">
                   {item.art === 'cards' ? <CreditCard className="size-5" /> : <BookOpen className="size-5" />}
@@ -157,28 +158,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section id="fresh" className="mx-auto max-w-6xl scroll-mt-28 px-4 pb-14">
-        <Reveal>
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <SectionHeading
-            className="mb-0"
-            eyebrow="Витрина"
-            title="Свежие шаблоны"
-            text="Наведите на карточку, чтобы купить, или откройте быстрый просмотр."
-          />
-          <Link to="/catalog" className={buttonClass('secondary', 'sm')}>
-            Весь каталог
-          </Link>
-        </div>
-        </Reveal>
-        <div className="grid grid-cols-4 gap-4">
-          {published.slice(0, 4).map((product, index) => (
-            <Reveal key={product.id} delay={index * 80} className="h-full">
-              <ProductCard product={product} onPreview={setPreviewId} />
-            </Reveal>
-          ))}
-        </div>
-      </section>
+      <AboutSection />
 
       <section id="how" className="mx-auto max-w-6xl px-4 py-4">
         <Reveal>
@@ -195,6 +175,29 @@ export function HomePage() {
               <h3 className="mt-1 text-lg font-semibold">{step.title}</h3>
               <p className="mt-2 text-sm leading-6 text-muted">{step.text}</p>
             </Card>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      <section id="fresh" className="mx-auto max-w-6xl scroll-mt-28 px-4 pb-14">
+        <Reveal>
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <SectionHeading
+            className="mb-0"
+            eyebrow="Витрина"
+            title="Наша галерея"
+            text="Готовые работы дома печати."
+          />
+          <Link href="/catalog" className={buttonClass('secondary', 'sm')}>
+            Весь каталог
+          </Link>
+        </div>
+        </Reveal>
+        <div className="grid grid-cols-4 gap-4">
+          {published.filter(isPrintWork).slice(0, 4).map((product, index) => (
+            <Reveal key={product.id} delay={index * 80} className="h-full">
+              <ProductCard product={product} onPreview={setPreviewId} />
             </Reveal>
           ))}
         </div>

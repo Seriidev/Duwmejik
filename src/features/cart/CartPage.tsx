@@ -1,4 +1,6 @@
-import { Link } from 'react-router-dom'
+'use client'
+
+import Link from 'next/link'
 import { TemplateArt } from '@/components/TemplateArt'
 import { Button, buttonClass } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -20,7 +22,7 @@ export function CartPage() {
         <Card className="mt-8 px-6 py-16 text-center">
           <p className="text-lg font-semibold">Пока пусто</p>
           <p className="mt-2 text-muted">Добавьте макеты из каталога — можно несколько сразу.</p>
-          <Link to="/catalog" className={buttonClass('primary', 'md', 'mt-6')}>
+          <Link href="/catalog" className={buttonClass('primary', 'md', 'mt-6')}>
             В каталог
           </Link>
         </Card>
@@ -31,7 +33,7 @@ export function CartPage() {
               <Card key={item.id} className="flex items-center gap-4 p-3">
                 <TemplateArt categoryId={item.categoryId} accent={item.accent} seed={item.seed} className="size-20 shrink-0 rounded-2xl" />
                 <div className="min-w-0 flex-1">
-                  <Link to={`/product/${item.id}`} className="font-semibold">
+                  <Link href={`/product/${item.id}`} className="font-semibold">
                     {item.title}
                   </Link>
                   <p className="text-sm text-muted">{item.fileTypes.join(', ')}</p>
@@ -47,7 +49,7 @@ export function CartPage() {
             <p className="text-sm text-muted">К оплате</p>
             <p className="mt-1 text-3xl font-semibold">{formatPrice(total)}</p>
             <p className="mt-2 text-sm text-muted">{items.length} поз.</p>
-            <Link to="/checkout" className={buttonClass('primary', 'md', 'mt-5 w-full')}>
+            <Link href="/checkout" className={buttonClass('primary', 'md', 'mt-5 w-full')}>
               {total === 0 ? 'Получить файлы' : 'Оформить'}
             </Link>
           </Card>

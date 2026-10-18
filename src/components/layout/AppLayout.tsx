@@ -1,13 +1,19 @@
+'use client'
+
 import { ArrowUp } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Footer } from '@/components/layout/Footer'
 import { Header } from '@/components/layout/Header'
 import { cn } from '@/lib/cn'
 import { scrollToId, scrollToTop } from '@/lib/scrollTo'
+import { useHash } from '@/lib/useHash'
 
-export function AppLayout() {
-  const { pathname, hash } = useLocation()
+export function AppLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
+  const hash = useHash()
+  const dashboard = pathname.startsWith('/templates')
+  const hostedQr = pathname === '/q'
 
   useEffect(() => {
     if (hash) {
@@ -18,21 +24,20 @@ export function AppLayout() {
   }, [pathname, hash])
 
   return (
-    <div className="flex min-h-svh flex-col bg-surface text-ink">
-      <Header />
-      <main className="flex-1">
-        <Outlet />
-      </main>
-      <Footer />
-      <ScrollTop />
+    <div className={cn('flex min-h-svh flex-col text-ink', dashboard ? 'bg-white' : 'bg-surface')}>
+      {!dashboard && !hostedQr && <Header />}
+      <main className="flex-1">{children}</main>
+      {!dashboard && !hostedQr && <Footer />}
+      {!dashboard && !hostedQr && <ScrollTop />}
     </div>
   )
 }
 
 function ScrollTop() {
   const [visible, setVisible] = useState(false)
-  const { pathname, hash } = useLocation()
-  const navigate = useNavigate()
+  const pathname = usePathname()
+  const hash = useHash()
+  const router = useRouter()
 
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > 480)
@@ -46,7 +51,7 @@ function ScrollTop() {
       type="button"
       aria-label="На первый экран"
       onClick={() => {
-        if (pathname !== '/' || hash) navigate('/')
+        if (pathname !== '/' || hash) router.push('/')
         else scrollToTop()
       }}
       className={cn(

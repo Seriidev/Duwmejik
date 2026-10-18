@@ -1,5 +1,7 @@
+'use client'
+
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { Gate } from '@/components/Gate'
 import { buttonClass } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -28,7 +30,7 @@ export function SellerPage() {
         title="Кабинет дизайнера"
         text="Войдите как продавец, чтобы выкладывать шаблоны. Демо: seller@duwmejik.ru, пароль demo."
         action={
-          <Link to="/login" state={{ from: '/seller' }} className={buttonClass()}>
+          <Link href="/login?from=%2Fseller" className={buttonClass()}>
             Войти
           </Link>
         }
@@ -42,7 +44,7 @@ export function SellerPage() {
         title="Нужна роль дизайнера"
         text="Покупательский аккаунт видит заказы, но не загружает макеты. Откройте демо seller@duwmejik.ru."
         action={
-          <Link to="/login" state={{ from: '/seller' }} className={buttonClass()}>
+          <Link href="/login?from=%2Fseller" className={buttonClass()}>
             Сменить аккаунт
           </Link>
         }

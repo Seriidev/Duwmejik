@@ -1,5 +1,9 @@
 import type { Category, Product } from '@/types'
 
+export function isPrintWork(product: Product) {
+  return product.authorId === 'u-seller'
+}
+
 export const categorySeed: Category[] = [
   { id: 'cards', title: 'Визитки', color: '#dbeafe', blurb: 'Плотные карточки для первого знакомства' },
   { id: 'brochures', title: 'Буклеты и брошюры', color: '#fce7f3', blurb: 'Фальцовка, скрепка и спокойная вёрстка' },

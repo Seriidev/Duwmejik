@@ -13,8 +13,9 @@ import {
   ShoppingCart,
   X,
 } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import cardPreview from '@/assets/card-preview.jpg'
 import { Modal } from '@/components/ui/Modal'
 import { cn } from '@/lib/cn'
@@ -59,8 +60,16 @@ function specsFor(product: Product) {
   ]
 }
 
-export function PreviewModal({ product, onClose }: { product: Product | null; onClose: () => void }) {
-  const navigate = useNavigate()
+export function PreviewModal({
+  product,
+  onClose,
+  onOrder,
+}: {
+  product: Product | null
+  onClose: () => void
+  onOrder?: () => void
+}) {
+  const router = useRouter()
   const user = useAuthStore((state) => state.user)
   const category = useCatalogStore((state) => state.categories.find((item) => item.id === product?.categoryId))
   const favorites = useAccountStore((state) => (user ? state.favorites[user.id] : undefined))
@@ -83,7 +92,7 @@ export function PreviewModal({ product, onClose }: { product: Product | null; on
   function save() {
     if (!product) return
     if (!user) {
-      navigate('/login')
+      router.push('/login')
       return
     }
     toggleFavorite(user.id, product.id)
@@ -100,7 +109,7 @@ export function PreviewModal({ product, onClose }: { product: Product | null; on
               {slides.map((position, slideIndex) => (
                 <img
                   key={position}
-                  src={cardPreview}
+                  src={cardPreview.src}
                   alt=""
                   className={cn(
                     'aspect-[5/4] w-full object-cover transition-opacity duration-500',
@@ -151,7 +160,7 @@ export function PreviewModal({ product, onClose }: { product: Product | null; on
                     slideIndex === index ? 'border-lime-400' : 'border-transparent',
                   )}
                 >
-                  <img src={cardPreview} alt="" className={cn('h-full w-full object-cover', position)} />
+                  <img src={cardPreview.src} alt="" className={cn('h-full w-full object-cover', position)} />
                 </button>
               ))}
             </div>
@@ -218,14 +227,25 @@ export function PreviewModal({ product, onClose }: { product: Product | null; on
               ≈ {quantity} шт. · 1–2 дня
             </p>
             <div className="mt-4 flex gap-2">
-              <Link
-                to="/order"
-                onClick={onClose}
-                className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-lime-400 text-sm font-semibold text-slate-950"
-              >
-                <ShoppingCart className="size-4" />
-                Заказать
-              </Link>
+              {onOrder ? (
+                <button
+                  type="button"
+                  onClick={onOrder}
+                  className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-lime-400 text-sm font-semibold text-slate-950"
+                >
+                  <ShoppingCart className="size-4" />
+                  Заказать
+                </button>
+              ) : (
+                <Link
+                  href="/order"
+                  onClick={onClose}
+                  className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-lime-400 text-sm font-semibold text-slate-950"
+                >
+                  <ShoppingCart className="size-4" />
+                  Заказать
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={save}

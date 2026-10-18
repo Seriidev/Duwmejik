@@ -1,5 +1,8 @@
+'use client'
+
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -8,9 +11,9 @@ import { useAuthStore } from '@/store/useAuthStore'
 export function LoginPage() {
   const login = useAuthStore((state) => state.login)
   const register = useAuthStore((state) => state.register)
-  const navigate = useNavigate()
-  const location = useLocation()
-  const from = (location.state as { from?: string } | null)?.from ?? '/account'
+  const router = useRouter()
+  const fromParam = useSearchParams().get('from')
+  const from = fromParam && fromParam.startsWith('/') && !fromParam.startsWith('//') ? fromParam : '/account'
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -43,7 +46,7 @@ export function LoginPage() {
               }
               const message = mode === 'login' ? login(email, password) : register(name, email, password)
               if (message) setError(message)
-              else navigate(from)
+              else router.push(from)
             }}
           >
             {mode === 'register' && (
@@ -92,7 +95,7 @@ export function LoginPage() {
             </button>
           </p>
         </Card>
-        <Link to="/" className="mt-5 inline-block text-sm text-muted">
+        <Link href="/" className="mt-5 inline-block text-sm text-muted">
           На главную
         </Link>
       </div>

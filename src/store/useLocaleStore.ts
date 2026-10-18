@@ -5,7 +5,8 @@ export type Locale = 'ru' | 'tk'
 
 const copy = {
   ru: {
-    home: 'Главная',
+    ourHeading: 'Наша галерея',
+    home: 'Главный',
     about: 'О нас',
     ourCatalog: 'Шаблоны',
     contacts: 'Контакты',
@@ -25,7 +26,8 @@ const copy = {
     menuClose: 'Закрыть меню',
   },
   tk: {
-    home: 'Baş sahypa',
+    ourHeading: 'Biziň galereýamyz',
+    home: 'Esasy',
     about: 'Biz barada',
     ourCatalog: 'Şablonlar',
     contacts: 'Kontaktlar',

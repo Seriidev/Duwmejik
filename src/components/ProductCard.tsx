@@ -1,5 +1,5 @@
 import { Heart } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import cardPreview from '@/assets/card-preview.jpg'
 import { cn } from '@/lib/cn'
 import { useAccountStore } from '@/store/useAccountStore'
@@ -14,7 +14,7 @@ export function ProductCard({
   product: Product
   onPreview?: (id: string) => void
 }) {
-  const navigate = useNavigate()
+  const router = useRouter()
   const category = useCatalogStore((state) => state.categories.find((item) => item.id === product.categoryId))
   const user = useAuthStore((state) => state.user)
   const favorites = useAccountStore((state) => (user ? state.favorites[user.id] : undefined))
@@ -25,9 +25,9 @@ export function ProductCard({
     <article
       role="link"
       tabIndex={0}
-      onClick={() => (onPreview ? onPreview(product.id) : navigate(`/product/${product.id}`))}
+      onClick={() => (onPreview ? onPreview(product.id) : router.push(`/product/${product.id}`))}
       onKeyDown={(event) => {
-        if (event.key === 'Enter') onPreview ? onPreview(product.id) : navigate(`/product/${product.id}`)
+        if (event.key === 'Enter') onPreview ? onPreview(product.id) : router.push(`/product/${product.id}`)
       }}
       className="flex h-full cursor-pointer flex-col rounded-[28px] bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_16px_32px_rgba(55,70,120,0.12)]"
     >
@@ -38,7 +38,7 @@ export function ProductCard({
           onClick={(event) => {
             event.stopPropagation()
             if (!user) {
-              navigate('/login')
+              router.push('/login')
               return
             }
             toggleFavorite(user.id, product.id)
@@ -47,7 +47,7 @@ export function ProductCard({
         >
           <Heart className={cn('size-4', liked && 'fill-rose-500 text-rose-500')} />
         </button>
-        <img src={cardPreview} alt="" className="aspect-square w-full rounded-[22px] object-cover" />
+        <img src={cardPreview.src} alt="" className="aspect-square w-full rounded-[22px] object-cover" />
       </div>
       <div className="px-2 py-3">
         <h3 className="line-clamp-1 text-base font-semibold leading-tight text-slate-950">{product.title}</h3>

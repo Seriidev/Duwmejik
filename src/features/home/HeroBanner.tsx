@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
 
-const bannerUrls = Object.values(
-  import.meta.glob('../../assets/banners/*.{png,jpg,jpeg,webp,avif}', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  }),
-)
+type BannerModule = string | { src: string }
+
+const bannerContext = import.meta.webpackContext('../../assets/banners', {
+  recursive: false,
+  regExp: /\.(png|jpe?g|webp|avif)$/,
+})
+
+function bannerSrc(file: BannerModule) {
+  return typeof file === 'string' ? file : file.src
+}
+
+const bannerUrls = bannerContext.keys().map((key) => bannerSrc(bannerContext(key)))
 
 export const hasHeroBanner = bannerUrls.length > 0
 

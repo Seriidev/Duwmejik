@@ -1,5 +1,5 @@
 import { Mail, MapPin, Phone } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import logoBell from '@/assets/logo-bell.png'
 import { Reveal } from '@/components/Reveal'
 
@@ -11,8 +11,8 @@ export function Footer() {
       <div className="mx-auto grid max-w-6xl items-start gap-10 px-4 py-12 lg:grid-cols-2">
         <Reveal>
         <div>
-          <Link to="/" className="inline-flex items-center gap-2 text-lg font-semibold text-slate-950">
-            <img src={logoBell} alt="" className="size-10 object-contain" />
+          <Link href="/" className="inline-flex items-center gap-2 text-lg font-semibold text-slate-950">
+            <img src={logoBell.src} alt="" className="size-10 object-contain" />
             Duwmejik
           </Link>
           <p className="mt-3 max-w-xs text-sm leading-6 text-slate-500">

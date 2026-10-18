@@ -1,13 +1,16 @@
-import { Check, ChevronDown, CircleCheck, Copy, Download, Gift, Palette, PenTool, Printer, ScanLine, Upload } from 'lucide-react'
+'use client'
+
+import { Check, ChevronDown, CircleCheck, Copy, Download, Gift, Image as ImageIcon, LayoutGrid, Palette, PenTool, Printer, ScanLine, Upload } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
+import cardPreview from '@/assets/card-preview.jpg'
 import { estimate, SERVICE_ORDER, SERVICES } from '@/features/orders/pricing'
 import { createId } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { useAccountStore } from '@/store/useAccountStore'
 import { useAuthStore } from '@/store/useAuthStore'
-import type { CustomOrder, ServiceType } from '@/types'
+import type { CustomOrder, Product, ServiceType } from '@/types'
 
 const FORMATS = ['90×50 or A4', '90×50', 'A6', 'A5', 'A4', 'A3']
 const PAPERS = ['Мелованная 300', 'Мелованная 170', 'Офсетная 80', 'Картон']
@@ -22,12 +25,39 @@ const serviceIcons = {
   laser: ScanLine,
 } as const
 
+const presets: Record<string, { service: ServiceType; subtype: string; format: string; paper: string; quantity: number }> = {
+  cards: { service: 'print', subtype: 'Визитки', format: '90×50', paper: 'Мелованная 300', quantity: 100 },
+  brochures: { service: 'print', subtype: 'Буклеты', format: 'A4', paper: 'Мелованная 170', quantity: 100 },
+  books: { service: 'print', subtype: 'Книги', format: 'A5', paper: 'Офсетная 80', quantity: 50 },
+  flyers: { service: 'print', subtype: 'Листовки', format: 'A5', paper: 'Мелованная 170', quantity: 500 },
+  forms: { service: 'print', subtype: 'Бланки', format: 'A4', paper: 'Офсетная 80', quantity: 100 },
+  postcards: { service: 'print', subtype: 'Листовки', format: 'A6', paper: 'Мелованная 300', quantity: 100 },
+  mugs: { service: 'souvenir', subtype: 'Кружки', format: 'A4', paper: 'Картон', quantity: 50 },
+  pens: { service: 'souvenir', subtype: 'Ручки', format: 'A6', paper: 'Картон', quantity: 100 },
+  notebooks: { service: 'souvenir', subtype: 'Блокноты', format: 'A5', paper: 'Офсетная 80', quantity: 50 },
+  banners: { service: 'graphic', subtype: 'Баннеры', format: 'A3', paper: 'Мелованная 170', quantity: 1 },
+  stickers: { service: 'graphic', subtype: 'Наклейки', format: 'A6', paper: 'Мелованная 170', quantity: 100 },
+  packaging: { service: 'graphic', subtype: 'Упаковка', format: 'A4', paper: 'Картон', quantity: 100 },
+}
+
 function money(price: number) {
   return `${new Intl.NumberFormat('ru-RU').format(price)} TMT`
 }
 
-export function OrderWizardPage() {
-  const navigate = useNavigate()
+export function OrderWizardPage({
+  onFinished,
+  onOpenGallery,
+  onOpenTemplates,
+  selectedProduct,
+  selectedFrom,
+}: {
+  onFinished?: () => void
+  onOpenGallery?: () => void
+  onOpenTemplates?: () => void
+  selectedProduct?: Product | null
+  selectedFrom?: 'gallery' | 'templates' | null
+}) {
+  const router = useRouter()
   const user = useAuthStore((state) => state.user)
   const addOrder = useAccountStore((state) => state.addOrder)
   const [service, setService] = useState<ServiceType>('print')
@@ -43,6 +73,31 @@ export function OrderWizardPage() {
   const [error, setError] = useState('')
   const [created, setCreated] = useState<CustomOrder | null>(null)
   const [copied, setCopied] = useState(false)
+  const [pickedTitle, setPickedTitle] = useState(selectedProduct?.title ?? '')
+  const [pickedFrom, setPickedFrom] = useState<'gallery' | 'templates' | null>(selectedFrom ?? null)
+
+  function applyDesign(product: Product) {
+    const preset = presets[product.categoryId] ?? presets.cards
+    const extension = product.fileTypes[0]?.toLowerCase() ?? 'pdf'
+    setService(preset.service)
+    setSubtype(preset.subtype)
+    setFormat(preset.format)
+    setPaper(preset.paper)
+    setQuantity(preset.quantity)
+    setComment(product.description)
+    setFiles([`${product.title}.${extension}`])
+    setName(user?.name ?? name)
+    setEmail(user?.email ?? email)
+    setPhone(user?.phone || phone)
+    setPickedTitle(product.title)
+    setError('')
+  }
+
+  useEffect(() => {
+    if (!selectedProduct) return
+    applyDesign(selectedProduct)
+    setPickedFrom(selectedFrom ?? null)
+  }, [selectedProduct, selectedFrom])
 
   const quote = estimate(service, 'standard', quantity)
 
@@ -82,7 +137,12 @@ export function OrderWizardPage() {
   if (created) {
     return (
       <Shell>
-        <SuccessCard order={created} copied={copied} onCopy={() => setCopied(true)} onClose={() => navigate('/')} />
+        <SuccessCard
+          order={created}
+          copied={copied}
+          onCopy={() => setCopied(true)}
+          onClose={() => (onFinished ? onFinished() : router.push('/'))}
+        />
       </Shell>
     )
   }
@@ -112,9 +172,22 @@ export function OrderWizardPage() {
           )
         })}
       </div>
-      <Link to="/catalog" className="mt-3 inline-block text-sm text-blue-600 underline">
-        или выбрать из каталога
-      </Link>
+      <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-5">
+        <PickSource
+          title="Gallery"
+          subtitle="Готовые шаблоны"
+          icon={ImageIcon}
+          product={pickedFrom === 'gallery' ? pickedTitle : ''}
+          onClick={() => (onOpenGallery ? onOpenGallery() : router.push('/templates?pick=gallery'))}
+        />
+        <PickSource
+          title="Выбрать"
+          subtitle="Шаблоны дизайнеров"
+          icon={LayoutGrid}
+          product={pickedFrom === 'templates' ? pickedTitle : ''}
+          onClick={() => (onOpenTemplates ? onOpenTemplates() : router.push('/templates?pick=templates'))}
+        />
+      </div>
 
       <div className="mt-6 grid gap-4">
         <div className="grid gap-2 text-sm text-slate-600">
@@ -188,7 +261,6 @@ export function OrderWizardPage() {
 
       {error && <p className="mt-4 text-right text-sm text-red-600">{error}</p>}
       <div className="mt-6 flex items-center justify-end gap-4">
-        <p className="text-sm text-slate-500">{money(quote.price)}</p>
         <button
           type="button"
           onClick={submit}
@@ -198,6 +270,41 @@ export function OrderWizardPage() {
         </button>
       </div>
     </Shell>
+  )
+}
+
+function PickSource({
+  title,
+  subtitle,
+  icon: Icon,
+  product,
+  onClick,
+}: {
+  title: string
+  subtitle: string
+  icon: typeof ImageIcon
+  product: string
+  onClick: () => void
+}) {
+  const chosen = Boolean(product)
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'relative rounded-2xl border px-3 py-4 text-left',
+        chosen ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white',
+      )}
+    >
+      {chosen && <Check className="absolute top-3 right-3 size-4 text-blue-600" />}
+      {chosen ? (
+        <img src={cardPreview.src} alt="" className="h-14 w-full rounded-xl object-cover" />
+      ) : (
+        <Icon className={cn('size-5', chosen ? 'text-blue-600' : 'text-slate-700')} />
+      )}
+      <span className="mt-3 block text-sm font-semibold text-slate-900">{title}</span>
+      <span className="mt-1 block truncate text-xs leading-4 text-slate-400">{chosen ? product : subtitle}</span>
+    </button>
   )
 }
 

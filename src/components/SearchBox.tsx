@@ -1,6 +1,6 @@
 import { Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { TemplateArt } from '@/components/TemplateArt'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { cn } from '@/lib/cn'
@@ -19,7 +19,7 @@ export function SearchBox({
   showFilters?: boolean
   placeholder?: string
 }) {
-  const navigate = useNavigate()
+  const router = useRouter()
   const products = useCatalogStore((state) => state.products)
   const categories = useCatalogStore((state) => state.categories)
   const external = value ?? ''
@@ -57,7 +57,7 @@ export function SearchBox({
   function submit(query: string) {
     setOpen(false)
     if (onSubmit) onSubmit(query)
-    else navigate(query ? `/catalog?q=${encodeURIComponent(query)}` : '/catalog')
+    else router.push(query ? `/catalog?q=${encodeURIComponent(query)}` : '/catalog')
   }
 
   return (
@@ -111,7 +111,7 @@ export function SearchBox({
                 className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-soft"
                 onClick={() => {
                   setOpen(false)
-                  navigate(`/product/${item.id}`)
+                  router.push(`/product/${item.id}`)
                 }}
               >
                 <TemplateArt

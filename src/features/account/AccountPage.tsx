@@ -1,5 +1,7 @@
+'use client'
+
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { Gate } from '@/components/Gate'
 import { ProductCard } from '@/components/ProductCard'
 import { Badge } from '@/components/ui/Badge'
@@ -12,12 +14,14 @@ import { formatDate, formatPrice } from '@/lib/format'
 import { useAccountStore } from '@/store/useAccountStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useCatalogStore } from '@/store/useCatalogStore'
+import { useEngagementStore } from '@/store/useEngagementStore'
 
 export function AccountPage() {
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
   const orders = useAccountStore((state) => state.orders)
   const favorites = useAccountStore((state) => state.favorites)
+  const likes = useEngagementStore((state) => state.likes)
   const products = useCatalogStore((state) => state.products)
   const [previewId, setPreviewId] = useState<string | null>(null)
   const preview = products.find((item) => item.id === previewId) ?? null
@@ -28,7 +32,7 @@ export function AccountPage() {
         title="Войдите в кабинет"
         text="Здесь хранятся покупки, скачанные файлы, избранное и статус заявок."
         action={
-          <Link to="/login" state={{ from: '/account' }} className={buttonClass()}>
+          <Link href="/login?from=%2Faccount" className={buttonClass()}>
             Войти
           </Link>
         }
@@ -41,7 +45,10 @@ export function AccountPage() {
   )
   const inProgress = mineOrders.filter((item) => item.status === 'new' || item.status === 'in_progress').length
   const done = mineOrders.filter((item) => item.status === 'done').length
-  const liked = (favorites[user.id] ?? [])
+  const saved = (favorites[user.id] ?? [])
+    .map((id) => products.find((product) => product.id === id && product.status === 'published'))
+    .filter((item) => item != null)
+  const liked = (likes[user.id] ?? [])
     .map((id) => products.find((product) => product.id === id && product.status === 'published'))
     .filter((item) => item != null)
   const initials = user.name
@@ -54,7 +61,7 @@ export function AccountPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <p className="text-sm text-slate-400">
-        <Link to="/" className="hover:text-slate-700">
+        <Link href="/" className="hover:text-slate-700">
           Главная
         </Link>
         <span className="px-2">›</span>
@@ -110,9 +117,26 @@ export function AccountPage() {
         </section>
       </div>
 
-      {liked.length > 0 && (
-        <section className="mt-8">
-          <h2 className="text-xl font-semibold">Избранное</h2>
+      <section className="mt-8">
+        <h2 className="text-xl font-semibold">Сохранённые</h2>
+        {saved.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">Пока ничего не сохранено.</p>
+        ) : (
+          <div className="mt-4 flex flex-wrap gap-4">
+            {saved.map((product) => (
+              <div key={product.id} className="w-[220px]">
+                <ProductCard product={product} onPreview={setPreviewId} />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-xl font-semibold">Лайки</h2>
+        {liked.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">Пока нет лайков.</p>
+        ) : (
           <div className="mt-4 flex flex-wrap gap-4">
             {liked.map((product) => (
               <div key={product.id} className="w-[220px]">
@@ -120,8 +144,8 @@ export function AccountPage() {
               </div>
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </section>
       <PreviewModal product={preview} onClose={() => setPreviewId(null)} />
     </div>
   )

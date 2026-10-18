@@ -1,6 +1,8 @@
+'use client'
+
 import { HiOutlineSquares2X2 } from 'react-icons/hi2'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { CategoryPill } from '@/components/CategoryPill'
 import { ProductCard } from '@/components/ProductCard'
 import { Reveal } from '@/components/Reveal'
@@ -15,7 +17,9 @@ function readPrice(value: string | null): ProductQuery['price'] {
 }
 
 export function CatalogPage() {
-  const [params, setParams] = useSearchParams()
+  const params = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
   const products = useCatalogStore((state) => state.products)
   const categories = useCatalogStore((state) => state.categories)
   const [previewId, setPreviewId] = useState<string | null>(null)
@@ -31,10 +35,11 @@ export function CatalogPage() {
   }
 
   function setFilter(key: keyof ProductQuery, value: string) {
-    const next = new URLSearchParams(params)
+    const next = new URLSearchParams(params.toString())
     if (value) next.set(key, value)
     else next.delete(key)
-    setParams(next)
+    const query = next.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
   }
 
   const visible = filterProducts(products, query, categories)

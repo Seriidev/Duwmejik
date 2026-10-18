@@ -1,6 +1,9 @@
+'use client'
+
 import { CircleCheck } from 'lucide-react'
-import { useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { Button, buttonClass } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -27,8 +30,13 @@ export function CheckoutPage() {
   const [cvc, setCvc] = useState('')
   const [error, setError] = useState('')
   const [done, setDone] = useState<Purchase[] | null>(null)
+  const router = useRouter()
 
-  if (!user) return <Navigate to="/login" state={{ from: '/checkout' }} replace />
+  useEffect(() => {
+    if (!user) router.replace('/login?from=%2Fcheckout')
+  }, [user, router])
+
+  if (!user) return null
 
   if (done) {
     return (
@@ -39,10 +47,10 @@ export function CheckoutPage() {
           Это учебный чекаут: деньги не списывались. Файлы лежат в кабинете, номер заказа {done[0]?.id}.
         </p>
         <div className="mt-6 flex justify-center gap-3">
-          <Link to="/account" className={buttonClass()}>
+          <Link href="/account" className={buttonClass()}>
             К покупкам
           </Link>
-          <Link to="/catalog" className={buttonClass('secondary')}>
+          <Link href="/catalog" className={buttonClass('secondary')}>
             В каталог
           </Link>
         </div>
@@ -54,7 +62,7 @@ export function CheckoutPage() {
     return (
       <div className="mx-auto max-w-lg px-4 py-20 text-center">
         <h1 className="text-3xl font-semibold">Корзина пуста</h1>
-        <Link to="/catalog" className={buttonClass('primary', 'md', 'mt-6')}>
+        <Link href="/catalog" className={buttonClass('primary', 'md', 'mt-6')}>
           Выбрать макет
         </Link>
       </div>

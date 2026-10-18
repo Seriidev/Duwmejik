@@ -1,9 +1,11 @@
 import { Menu, X } from 'lucide-react'
 import logoBell from '@/assets/logo-bell.png'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { scrollToId, scrollToTop } from '@/lib/scrollTo'
+import { useHash } from '@/lib/useHash'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useCopy, useLocaleStore, type Locale } from '@/store/useLocaleStore'
 
@@ -14,13 +16,15 @@ export function Header() {
   const t = useCopy()
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const { pathname, hash } = useLocation()
-  const navigate = useNavigate()
+  const pathname = usePathname()
+  const hash = useHash()
+  const router = useRouter()
   const links = [
     { to: '/', label: t.home, active: pathname === '/' && hash !== '#about' && hash !== '#contacts' && hash !== '#fresh' },
     { to: '/#about', label: t.about, active: hash === '#about' },
-    { to: '/#fresh', label: t.ourCatalog, active: hash === '#fresh' },
+    { to: '/#fresh', label: t.ourHeading, active: hash === '#fresh' },
     { to: '/#contacts', label: t.contacts, active: hash === '#contacts' },
+    { to: '/templates', label: t.ourCatalog, active: pathname.startsWith('/templates') },
   ]
 
   function onSectionClick(event: { preventDefault: () => void }, to: string) {
@@ -34,15 +38,15 @@ export function Header() {
       scrollToId(to.slice(2))
       return
     }
-    navigate(to)
+    router.push(to)
   }
 
   return (
     <header className="sticky top-0 z-40 px-3 pt-4 sm:px-6">
       <div className="mx-auto flex max-w-6xl items-center gap-3">
         <div className="flex h-[68px] min-w-0 flex-1 items-center gap-3 rounded-full bg-white px-2.5 shadow-[0_10px_40px_rgba(15,23,42,0.08)] sm:px-3 lg:grid lg:grid-cols-[1fr_auto_1fr]">
-          <Link to="/" className="flex items-center gap-2 pl-1.5 font-bold tracking-tight text-neutral-950">
-            <img src={logoBell} alt="Duwmejik" className="size-12 object-contain" />
+          <Link href="/" className="flex items-center gap-2 pl-1.5 font-bold tracking-tight text-neutral-950">
+            <img src={logoBell.src} alt="Duwmejik" className="size-12 object-contain" />
             <span className="text-[17px]">Duwmejik</span>
           </Link>
 
@@ -50,11 +54,11 @@ export function Header() {
             {links.map((link) => (
               <Link
                 key={link.to}
-                to={link.to}
+                href={link.to}
                 onClick={(event) => onSectionClick(event, link.to)}
                 className={cn(
-                  'whitespace-nowrap text-[15px] font-medium text-neutral-500 transition hover:text-neutral-950',
-                  link.active && 'text-neutral-950',
+                  'whitespace-nowrap text-[15px] font-medium text-neutral-500 hover:text-blue-600',
+                  link.active && 'text-blue-600',
                 )}
               >
                 {link.label}
@@ -81,7 +85,7 @@ export function Header() {
 
             {user ? (
             <Link
-              to="/account"
+              href="/account"
               className="grid size-10 place-items-center rounded-full bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700"
               aria-label={t.profile}
             >
@@ -89,7 +93,7 @@ export function Header() {
             </Link>
           ) : (
             <Link
-              to="/login"
+              href="/login"
               className="grid size-10 place-items-center rounded-full bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700"
               aria-label={t.login}
             >
@@ -115,8 +119,11 @@ export function Header() {
             {links.map((link) => (
               <Link
                 key={link.to}
-                to={link.to}
-                className="rounded-2xl px-3 py-2.5 font-medium text-neutral-700"
+                href={link.to}
+                className={cn(
+                  'rounded-2xl px-3 py-2.5 font-medium text-neutral-700 hover:text-blue-600',
+                  link.active && 'text-blue-600',
+                )}
                 onClick={(event) => {
                   setMenuOpen(false)
                   onSectionClick(event, link.to)

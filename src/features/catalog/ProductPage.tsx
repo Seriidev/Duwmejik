@@ -1,6 +1,9 @@
+'use client'
+
 import { Heart, Star } from 'lucide-react'
+import Link from 'next/link'
+import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ProductCard } from '@/components/ProductCard'
 import { TemplateArt } from '@/components/TemplateArt'
 import { Badge, PriceBadge } from '@/components/ui/Badge'
@@ -15,8 +18,9 @@ import { useCartStore } from '@/store/useCartStore'
 import { useCatalogStore } from '@/store/useCatalogStore'
 
 export function ProductPage() {
-  const { id } = useParams()
-  const navigate = useNavigate()
+  const params = useParams<{ id: string }>()
+  const id = params.id
+  const router = useRouter()
   const product = useCatalogStore((state) => state.products.find((item) => item.id === id))
   const category = useCatalogStore((state) => state.categories.find((item) => item.id === product?.categoryId))
   const related = useCatalogStore((state) =>
@@ -35,7 +39,7 @@ export function ProductPage() {
     return (
       <div className="mx-auto max-w-lg px-4 py-24 text-center">
         <h1 className="text-3xl font-semibold">Макет не найден</h1>
-        <Link to="/catalog" className={cn('mt-6 inline-flex', 'text-violet-600')}>
+        <Link href="/catalog" className={cn('mt-6 inline-flex', 'text-violet-600')}>
           Вернуться в каталог
         </Link>
       </div>
@@ -48,12 +52,12 @@ export function ProductPage() {
 
   function buy() {
     add(product!.id)
-    navigate('/checkout')
+    router.push('/checkout')
   }
 
   function downloadFree() {
     if (!user) {
-      navigate('/login', { state: { from: `/product/${product!.id}` } })
+      router.push(`/login?from=${encodeURIComponent(`/product/${product!.id}`)}`)
       return
     }
     if (!owned) {
@@ -74,11 +78,11 @@ export function ProductPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <p className="text-sm text-muted">
-        <Link to="/catalog">Каталог</Link>
+        <Link href="/catalog">Каталог</Link>
         {category && (
           <>
             {' / '}
-            <Link to={`/catalog?category=${category.id}`}>{category.title}</Link>
+            <Link href={`/catalog?category=${category.id}`}>{category.title}</Link>
           </>
         )}
       </p>
@@ -151,7 +155,7 @@ export function ProductPage() {
               variant="ghost"
               onClick={() => {
                 if (!user) {
-                  navigate('/login', { state: { from: `/product/${product.id}` } })
+                  router.push(`/login?from=${encodeURIComponent(`/product/${product.id}`)}`)
                   return
                 }
                 toggleFavorite(user.id, product.id)

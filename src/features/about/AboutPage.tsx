@@ -115,7 +115,7 @@ function AboutBanner({ locale }: { locale: Locale }) {
       {banners.map((banner, bannerIndex) => (
         <img
           key={banner.ru}
-          src={cardPhoto}
+          src={cardPhoto.src}
           alt=""
           className={cn(
             'absolute inset-0 h-full w-full object-cover transition-opacity duration-700',
