@@ -66,6 +66,7 @@ export interface SessionUser {
   company: string
   city: string
   address: string
+  avatar?: string
 }
 
 export interface AccountUser extends SessionUser {
@@ -97,5 +98,6 @@ export interface CustomOrder {
   quantity: number
   references: string[]
   brief: Record<string, string>
+  productId?: string
   createdAt: string
 }

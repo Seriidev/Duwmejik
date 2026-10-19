@@ -1,5 +1,8 @@
-import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
+'use client'
+
+import { Children, isValidElement, type ChangeEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { cn } from '@/lib/cn'
+import { SmoothSelect } from '@/components/ui/SmoothSelect'
 
 const field =
   'w-full rounded-xl border border-line bg-card px-3 text-ink outline-none ring-violet-500/30 placeholder:text-muted focus:ring-2'
@@ -32,16 +35,28 @@ export function TextArea({
 
 export function Select({
   label,
-  className,
   children,
-  ...props
+  value,
+  onChange,
+  disabled,
+  'aria-label': ariaLabel,
 }: { label?: string } & SelectHTMLAttributes<HTMLSelectElement>) {
+  const options = Children.toArray(children).flatMap((child) => {
+    if (!isValidElement<{ value?: string; children?: ReactNode }>(child)) return []
+    const optionValue = String(child.props.value ?? child.props.children ?? '')
+    const optionLabel = String(child.props.children ?? optionValue)
+    return [{ value: optionValue, label: optionLabel }]
+  })
   return (
     <label className="grid gap-1.5 text-sm">
       {label && <span className="font-medium text-ink">{label}</span>}
-      <select className={cn(field, 'h-11', className)} {...props}>
-        {children}
-      </select>
+      <SmoothSelect
+        ariaLabel={ariaLabel}
+        disabled={disabled}
+        value={String(value ?? '')}
+        options={options}
+        onChange={(next) => onChange?.({ target: { value: next } } as ChangeEvent<HTMLSelectElement>)}
+      />
     </label>
   )
 }

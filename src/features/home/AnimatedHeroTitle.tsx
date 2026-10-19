@@ -20,6 +20,13 @@ const phrases = {
     { accent: 'Çapdan soňky', rest: ' hyzmatlar', tone: 'text-blue-600' },
     { accent: 'Lazer', rest: ' grawirowka', tone: 'text-violet-600' },
   ],
+  en: [
+    { accent: 'Print', rest: ' design', tone: 'text-violet-600' },
+    { accent: 'Fast', rest: ' print', tone: 'text-blue-600' },
+    { accent: 'Digital', rest: ' printing', tone: 'text-violet-600' },
+    { accent: 'Finishing', rest: ' services', tone: 'text-blue-600' },
+    { accent: 'Laser', rest: ' engraving', tone: 'text-violet-600' },
+  ],
 } as const
 
 export function AnimatedHeroTitle() {

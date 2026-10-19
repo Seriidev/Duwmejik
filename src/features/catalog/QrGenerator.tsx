@@ -33,7 +33,9 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'next/navigation'
 import QRCode from 'qrcode'
+import { SmoothSelect } from '@/components/ui/SmoothSelect'
 import { QrCard } from '@/features/catalog/QrCard'
 import { cn } from '@/lib/cn'
 import { emptyQrDoc, qrColor, qrReady, qrTarget, type QrDoc, type QrKind } from '@/lib/qrDoc'
@@ -98,13 +100,38 @@ async function shrinkPhoto(file: File) {
   return data
 }
 
+function readStep(value: string | null) {
+  const step = Number(value)
+  return step >= 1 && step <= 4 ? step : 1
+}
+
 export function QrGenerator() {
-  const [step, setStep] = useState(1)
+  const params = useSearchParams()
+  const [step, setStep] = useState(readStep(params.get('step')))
   const [doc, setDoc] = useState<QrDoc>(emptyQrDoc)
   const [view, setView] = useState<'page' | 'qr'>('page')
   const [ink, setInk] = useState('#111827')
   const [paper, setPaper] = useState('#ffffff')
   const [src, setSrc] = useState('')
+
+  useEffect(() => {
+    function onPop() {
+      setStep(readStep(new URLSearchParams(window.location.search).get('step')))
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  function goStep(next: number) {
+    const safe = Math.min(4, Math.max(1, next))
+    if (safe === step) return
+    const search = new URLSearchParams(window.location.search)
+    search.set('section', 'qr')
+    if (safe === 1) search.delete('step')
+    else search.set('step', String(safe))
+    window.history.pushState({ panel: 'qr', step: safe }, '', `/templates?${search.toString()}`)
+    setStep(safe)
+  }
 
   useEffect(() => {
     const next = qrTarget(doc, window.location.origin)
@@ -139,8 +166,13 @@ export function QrGenerator() {
   const selected = types.find((type) => type.id === doc.kind)
 
   return (
-    <div className="bg-[#f4f7fb] px-4 py-6 sm:px-6">
-      <Stepper step={step} onStep={setStep} />
+    <div className={cn('bg-[#f4f7fb] px-4 py-6 sm:px-6', step === 1 && 'flex flex-1 flex-col justify-center')}>
+      <Stepper
+        step={step}
+        onStep={(next) => {
+          if (next < step) window.history.go(next - step)
+        }}
+      />
       {step === 1 ? (
         <div className="mx-auto mt-8 max-w-3xl">
           <h1 className="text-2xl font-bold tracking-tight text-slate-950">1. Select QR type</h1>
@@ -151,7 +183,7 @@ export function QrGenerator() {
                 type="button"
                 onClick={() => {
                   patch({ kind: type.id })
-                  setStep(2)
+                  goStep(2)
                   setView('page')
                 }}
                 className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left hover:border-emerald-300 hover:bg-emerald-50/40"
@@ -182,7 +214,7 @@ export function QrGenerator() {
             <div className="mt-5 flex items-center justify-between gap-3">
               <button
                 type="button"
-                onClick={() => setStep((current) => Math.max(1, current - 1))}
+                onClick={() => window.history.back()}
                 className="inline-flex h-11 items-center gap-2 rounded-lg border border-emerald-500 bg-white px-4 text-sm font-semibold text-emerald-600"
               >
                 <ArrowLeft className="size-4" />
@@ -191,7 +223,7 @@ export function QrGenerator() {
               {step < 4 && (
                 <button
                   type="button"
-                  onClick={() => setStep((current) => Math.min(4, current + 1))}
+                  onClick={() => goStep(step + 1)}
                   className="inline-flex h-11 items-center gap-2 rounded-lg bg-emerald-500 px-5 text-sm font-semibold text-white hover:bg-emerald-600"
                 >
                   Next
@@ -289,14 +321,18 @@ function ContentForm({
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Network name" value={doc.ssid} onChange={(ssid) => onPatch({ ssid })} />
             <Field label="Password" value={doc.password} onChange={(password) => onPatch({ password })} />
-            <label className="grid gap-1.5 text-sm font-medium text-slate-800">
+            <div className="grid gap-1.5 text-sm font-medium text-slate-800">
               Security
-              <select className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm" value={doc.security} onChange={(event) => onPatch({ security: event.target.value })}>
-                <option value="WPA">WPA / WPA2</option>
-                <option value="WEP">WEP</option>
-                <option value="nopass">No password</option>
-              </select>
-            </label>
+              <SmoothSelect
+                value={doc.security}
+                options={[
+                  { value: 'WPA', label: 'WPA / WPA2' },
+                  { value: 'WEP', label: 'WEP' },
+                  { value: 'nopass', label: 'No password' },
+                ]}
+                onChange={(security) => onPatch({ security })}
+              />
+            </div>
           </div>
         </Section>
       )}

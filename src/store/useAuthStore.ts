@@ -10,7 +10,8 @@ interface AuthState {
   logout: () => void
   register: (name: string, email: string, password: string) => string | null
   setRole: (id: string, role: Role) => void
-  updateProfile: (patch: Pick<SessionUser, 'name' | 'email' | 'phone' | 'company' | 'city' | 'address'>) => void
+  updateProfile: (patch: Partial<Pick<SessionUser, 'name' | 'email' | 'phone' | 'company' | 'city' | 'address' | 'avatar'>>) => string | null
+  changePassword: (currentPassword: string, nextPassword: string) => string | null
 }
 
 const seedUsers: AccountUser[] = [
@@ -59,6 +60,7 @@ function toSession(account: AccountUser): SessionUser {
     company: account.company ?? '',
     city: account.city ?? '',
     address: account.address ?? '',
+    avatar: account.avatar ?? '',
   }
 }
 
@@ -94,9 +96,30 @@ export const useAuthStore = create<AuthState>()(
       },
       updateProfile: (patch) => {
         const current = get().user
-        if (!current) return
-        const users = get().users.map((item) => (item.id === current.id ? { ...item, ...patch } : item))
-        set({ users, user: { ...current, ...patch } })
+        if (!current) return 'Войдите снова'
+        const email = patch.email?.trim().toLowerCase()
+        if (email && !email.includes('@')) return 'Укажите почту'
+        if (email && get().users.some((item) => item.id !== current.id && item.email.toLowerCase() === email)) {
+          return 'Такая почта уже есть'
+        }
+        const name = patch.name?.trim()
+        if (patch.name !== undefined && !name) return 'Укажите имя'
+        const next = { ...patch, ...(email ? { email } : {}), ...(name ? { name } : {}) }
+        const users = get().users.map((item) => (item.id === current.id ? { ...item, ...next } : item))
+        set({ users, user: { ...current, ...next } })
+        return null
+      },
+      changePassword: (currentPassword, nextPassword) => {
+        const current = get().user
+        if (!current) return 'Войдите снова'
+        const account = get().users.find((item) => item.id === current.id)
+        if (!account || account.password !== currentPassword) return 'Текущий пароль неверный'
+        if (nextPassword.length < 4) return 'Новый пароль — от 4 символов'
+        if (nextPassword === currentPassword) return 'Новый пароль совпадает со старым'
+        set({
+          users: get().users.map((item) => (item.id === current.id ? { ...item, password: nextPassword } : item)),
+        })
+        return null
       },
       setRole: (id, role) => {
         const users = get().users.map((item) => (item.id === id ? { ...item, role } : item))

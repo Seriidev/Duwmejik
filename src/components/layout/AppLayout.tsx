@@ -14,6 +14,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const hash = useHash()
   const dashboard = pathname.startsWith('/templates')
   const hostedQr = pathname === '/q'
+  const profile = pathname === '/account'
+  const bare = dashboard || hostedQr || profile
 
   useEffect(() => {
     if (hash) {
@@ -24,11 +26,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
   }, [pathname, hash])
 
   return (
-    <div className={cn('flex min-h-svh flex-col text-ink', dashboard ? 'bg-white' : 'bg-surface')}>
-      {!dashboard && !hostedQr && <Header />}
+    <div className={cn('flex min-h-svh flex-col text-ink', dashboard || profile ? 'bg-white' : 'bg-surface')}>
+      {!bare && <Header />}
       <main className="flex-1">{children}</main>
-      {!dashboard && !hostedQr && <Footer />}
-      {!dashboard && !hostedQr && <ScrollTop />}
+      {!bare && <Footer />}
+      {!bare && <ScrollTop />}
     </div>
   )
 }

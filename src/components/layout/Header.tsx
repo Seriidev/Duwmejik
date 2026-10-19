@@ -7,12 +7,11 @@ import { cn } from '@/lib/cn'
 import { scrollToId, scrollToTop } from '@/lib/scrollTo'
 import { useHash } from '@/lib/useHash'
 import { useAuthStore } from '@/store/useAuthStore'
-import { useCopy, useLocaleStore, type Locale } from '@/store/useLocaleStore'
+import { LanguageMenu } from '@/components/LanguageMenu'
+import { useCopy } from '@/store/useLocaleStore'
 
 export function Header() {
   const user = useAuthStore((state) => state.user)
-  const locale = useLocaleStore((state) => state.locale)
-  const setLocale = useLocaleStore((state) => state.setLocale)
   const t = useCopy()
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -67,29 +66,15 @@ export function Header() {
           </nav>
 
           <div className="ml-auto flex items-center justify-end gap-1.5 pr-1 lg:ml-0">
-            <div className="flex h-10 items-center rounded-full bg-slate-100 p-1">
-              {(['tk', 'ru'] as Locale[]).map((code) => (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => setLocale(code)}
-                  className={cn(
-                    'h-8 rounded-full px-3 text-sm font-semibold tracking-wide transition',
-                    locale === code ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600',
-                  )}
-                >
-                  {code === 'ru' ? 'RU' : 'TM'}
-                </button>
-              ))}
-            </div>
+            <LanguageMenu />
 
             {user ? (
             <Link
               href="/account"
-              className="grid size-10 place-items-center rounded-full bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700"
+              className="grid size-10 place-items-center overflow-hidden rounded-full bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700"
               aria-label={t.profile}
             >
-              {user.name.slice(0, 1)}
+              {user.avatar ? <img src={user.avatar} alt="" className="size-full object-cover" /> : user.name.slice(0, 1)}
             </Link>
           ) : (
             <Link

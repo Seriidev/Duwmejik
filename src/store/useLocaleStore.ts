@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type Locale = 'ru' | 'tk'
+export type Locale = 'ru' | 'en' | 'tk'
 
 const copy = {
   ru: {
@@ -24,6 +24,27 @@ const copy = {
     heroLabel: 'Заказывай дизайн онлайн',
     menuOpen: 'Открыть меню',
     menuClose: 'Закрыть меню',
+  },
+  en: {
+    ourHeading: 'Our gallery',
+    home: 'Home',
+    about: 'About',
+    ourCatalog: 'Templates',
+    contacts: 'Contacts',
+    order: 'Order',
+    portfolio: 'Portfolio',
+    catalog: 'Catalog',
+    cart: 'Cart',
+    profile: 'Profile',
+    account: 'Account',
+    seller: 'Designer account',
+    admin: 'Admin',
+    logout: 'Log out',
+    login: 'Log in',
+    hero: 'Order\ndesign online',
+    heroLabel: 'Order design online',
+    menuOpen: 'Open menu',
+    menuClose: 'Close menu',
   },
   tk: {
     ourHeading: 'Biziň galereýamyz',

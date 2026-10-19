@@ -1,12 +1,13 @@
 'use client'
 
-import { Bell, Bookmark, ChevronDown, ClipboardList, Eye, Globe, Heart, Image as ImageIcon, LayoutGrid, PanelLeftClose, PanelLeftOpen, QrCode, User } from 'lucide-react'
+import { Bell, Bookmark, ClipboardList, Eye, Heart, Image as ImageIcon, LayoutGrid, PanelLeftClose, PanelLeftOpen, QrCode } from 'lucide-react'
 import cardPreview from '@/assets/card-preview.jpg'
 import logoBell from '@/assets/logo-bell.png'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { isPrintWork } from '@/data/catalog'
+import { LanguageMenu } from '@/components/LanguageMenu'
 import { PreviewModal } from '@/features/catalog/PreviewModal'
 import { OrderWizardPage } from '@/features/orders/OrderWizardPage'
 import { QrGenerator } from '@/features/catalog/QrGenerator'
@@ -19,6 +20,7 @@ import type { Product } from '@/types'
 
 const chips = [
   { id: 'all', label: 'All' },
+  { id: 'popular', label: 'Popular' },
   { id: 'cards', label: 'Business cards' },
   { id: 'flyers', label: 'Flyers' },
   { id: 'banners', label: 'Banners' },
@@ -31,15 +33,13 @@ const chips = [
 type ChipId = (typeof chips)[number]['id']
 type Panel = 'gallery' | 'templates' | 'orders' | 'qr' | 'notification'
 
-const languages = [
-  { id: 'en', label: 'English' },
-  { id: 'fr', label: 'Français' },
-  { id: 'de', label: 'Deutsch' },
-  { id: 'it', label: 'Italiano' },
-  { id: 'rm', label: 'Rumantsch' },
-  { id: 'es', label: 'Español' },
-  { id: 'zh', label: '中文' },
-] as const
+function isPanel(value: string | null): value is Panel {
+  return value === 'gallery' || value === 'templates' || value === 'orders' || value === 'qr' || value === 'notification'
+}
+
+function panelUrl(next: Panel) {
+  return next === 'templates' ? '/templates' : `/templates?section=${next}`
+}
 
 const searchAliases: Record<string, ChipId> = {
   'business card': 'cards',
@@ -59,7 +59,7 @@ const searchAliases: Record<string, ChipId> = {
 }
 
 function matchesChip(product: Product, chip: ChipId) {
-  if (chip === 'all') return true
+  if (chip === 'all' || chip === 'popular') return true
   if (chip === 'menu') {
     const text = `${product.title} ${product.tags.join(' ')}`.toLowerCase()
     return text.includes('меню') || text.includes('menu')
@@ -78,17 +78,20 @@ function similarChip(product: Product): ChipId | null {
 
 export function TemplatesBoard() {
   const router = useRouter()
-  const pick = useSearchParams().get('pick')
+  const params = useSearchParams()
+  const pick = params.get('pick')
+  const section = params.get('section')
   const products = useCatalogStore((state) => state.products)
   const user = useAuthStore((state) => state.user)
   const favorites = useAccountStore((state) => (user ? state.favorites[user.id] : undefined))
+  const orders = useAccountStore((state) => state.orders)
   const toggleFavorite = useAccountStore((state) => state.toggleFavorite)
   const views = useEngagementStore((state) => state.views)
   const likes = useEngagementStore((state) => state.likes)
   const addView = useEngagementStore((state) => state.addView)
   const toggleLike = useEngagementStore((state) => state.toggleLike)
   const [menuOpen, setMenuOpen] = useState(true)
-  const [panel, setPanel] = useState<Panel>('templates')
+  const [panel, setPanel] = useState<Panel>(isPanel(section) ? section : 'templates')
   const [chip, setChip] = useState<ChipId>('all')
   const [alike, setAlike] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
@@ -97,41 +100,36 @@ export function TemplatesBoard() {
   const [picking, setPicking] = useState(false)
   const [picked, setPicked] = useState<Product | null>(null)
   const [pickedFrom, setPickedFrom] = useState<'gallery' | 'templates' | null>(null)
-  const [language, setLanguage] = useState<(typeof languages)[number]['id']>('en')
-  const [languagesOpen, setLanguagesOpen] = useState(false)
-  const languageRef = useRef<HTMLDivElement>(null)
-  const currentLanguage = languages.find((item) => item.id === language) ?? languages[0]
 
   useEffect(() => {
-    if (!languagesOpen) return
-    function onPointerDown(event: MouseEvent) {
-      if (!languageRef.current?.contains(event.target as Node)) setLanguagesOpen(false)
+    function onPop() {
+      const value = new URLSearchParams(window.location.search).get('section')
+      setPanel(isPanel(value) ? value : 'templates')
     }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setLanguagesOpen(false)
-    }
-    document.addEventListener('mousedown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [languagesOpen])
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
 
   useEffect(() => {
     if (pick !== 'gallery' && pick !== 'templates') return
     setPicking(true)
-    setPanel(pick)
     setChip('all')
     setAlike(null)
     setQuery('')
     setDraft('')
-    router.replace('/templates')
-  }, [pick, router])
+    window.history.replaceState({ panel: pick }, '', panelUrl(pick))
+    setPanel(pick)
+  }, [pick])
+
+  function go(next: Panel) {
+    if (next === panel) return
+    window.history.pushState({ panel: next }, '', panelUrl(next))
+    setPanel(next)
+  }
 
   function openForPick(next: 'gallery' | 'templates') {
     setPicking(true)
-    setPanel(next)
+    go(next)
     setChip('all')
     setAlike(null)
     setQuery('')
@@ -142,7 +140,7 @@ export function TemplatesBoard() {
     setPicked(product)
     setPickedFrom(panel === 'gallery' ? 'gallery' : 'templates')
     setPicking(false)
-    setPanel('orders')
+    go('orders')
   }
 
   const published = products.filter((item) => item.status === 'published')
@@ -152,7 +150,7 @@ export function TemplatesBoard() {
     const collection = published.filter((product) =>
       panel === 'gallery' ? isPrintWork(product) : !isPrintWork(product),
     )
-    return collection.filter((product) => {
+    const matched = collection.filter((product) => {
       if (alike && product.categoryId !== alike) return false
       if (!matchesChip(product, chip)) return false
       if (!text) return true
@@ -160,13 +158,22 @@ export function TemplatesBoard() {
       const haystack = `${product.title} ${product.description} ${product.tags.join(' ')}`.toLowerCase()
       return haystack.includes(text)
     })
-  }, [published, chip, query, alike, panel])
+    if (chip !== 'popular') return matched
+    const demand = new Map<string, number>()
+    orders.forEach((order) => {
+      if (!order.productId) return
+      demand.set(order.productId, (demand.get(order.productId) ?? 0) + 1)
+    })
+    return [...matched]
+      .sort((a, b) => (demand.get(b.id) ?? 0) * 500 + b.downloads - ((demand.get(a.id) ?? 0) * 500 + a.downloads))
+      .slice(0, 8)
+  }, [published, chip, query, alike, panel, orders])
 
   function showSimilar(product: Product) {
     const next = similarChip(product)
     setQuery('')
     setDraft('')
-    setPanel(isPrintWork(product) ? 'gallery' : 'templates')
+    go(isPrintWork(product) ? 'gallery' : 'templates')
     if (next) {
       setAlike(null)
       setChip(next)
@@ -218,7 +225,7 @@ export function TemplatesBoard() {
             type="button"
             onClick={() => {
               setPicking(false)
-              setPanel('gallery')
+              go('gallery')
               setChip('all')
               setAlike(null)
               setQuery('')
@@ -236,7 +243,7 @@ export function TemplatesBoard() {
             type="button"
             onClick={() => {
               setPicking(false)
-              setPanel('templates')
+              go('templates')
               setChip('all')
               setAlike(null)
               setQuery('')
@@ -254,7 +261,7 @@ export function TemplatesBoard() {
             type="button"
             onClick={() => {
               setPicking(false)
-              setPanel('orders')
+              go('orders')
             }}
             className={cn(
               'flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium',
@@ -266,7 +273,10 @@ export function TemplatesBoard() {
           </button>
           <button
             type="button"
-            onClick={() => setPanel('qr')}
+            onClick={() => {
+              setPicking(false)
+              go('qr')
+            }}
             className={cn(
               'flex h-11 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium',
               panel === 'qr' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50',
@@ -275,65 +285,52 @@ export function TemplatesBoard() {
             <QrCode className="size-5 shrink-0" />
             QR code generate
           </button>
-          <button
-            type="button"
-            onClick={() => setPanel('notification')}
-            className={cn(
-              'flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium',
-              panel === 'notification' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50',
-            )}
-          >
-            <Bell className="size-5" />
-            Notification
-          </button>
         </nav>
 
-        <div ref={languageRef} className="relative mt-auto">
-          <div
-            className={cn(
-              'absolute bottom-full left-0 right-0 z-30 mb-2 origin-bottom rounded-2xl border border-slate-100 bg-white p-2 shadow-[0_12px_32px_rgba(15,23,42,0.12)] transition duration-200 ease-out',
-              languagesOpen ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-2 opacity-0',
-            )}
+        <div className="mt-auto flex items-center gap-1 pt-4">
+          <Link
+            href={user ? '/account' : '/login?from=%2Ftemplates'}
+            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-1 py-1.5 hover:bg-slate-50"
           >
-            {languages
-              .filter((item) => item.id !== language)
-              .map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setLanguage(item.id)
-                    setLanguagesOpen(false)
-                  }}
-                  className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  <span className="size-4 shrink-0 rounded-full border border-slate-300" />
-                  {item.label}
-                </button>
-              ))}
-          </div>
-          <button
-            type="button"
-            aria-expanded={languagesOpen}
-            onClick={() => setLanguagesOpen((open) => !open)}
-            className="flex h-12 w-full items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 shadow-sm"
-          >
-            <Globe className="size-4 text-slate-400" />
-            <span className="min-w-0 flex-1 truncate text-left">{currentLanguage.label}</span>
-            <ChevronDown className={cn('size-4 text-slate-400 transition duration-200', languagesOpen && 'rotate-180')} />
-          </button>
+            <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-blue-600 text-xs font-semibold text-white">
+              {user?.avatar ? (
+                <img src={user.avatar} alt="" className="size-full object-cover" />
+              ) : (
+                (user?.name ?? 'L')
+                  .split(' ')
+                  .slice(0, 2)
+                  .map((part) => part[0] ?? '')
+                  .join('')
+                  .toUpperCase()
+              )}
+            </span>
+            <span className="truncate text-sm font-medium text-slate-800">{user?.name ?? 'Log in'}</span>
+          </Link>
+          <LanguageMenu direction="up" trigger="dots" />
         </div>
       </aside>
       </div>
 
-      <div className={cn('min-w-0 flex-1', (panel === 'orders' || panel === 'qr') && 'bg-surface')}>
+      <div className={cn('flex min-h-svh min-w-0 flex-1 flex-col', (panel === 'orders' || panel === 'qr') && 'bg-surface')}>
+        {(panel === 'orders' || panel === 'qr') && (
+          <div className={cn('flex px-4 sm:px-6', menuOpen ? 'h-0 overflow-hidden' : 'pt-4')}>
+            <button
+              type="button"
+              aria-label="Show menu"
+              onClick={() => setMenuOpen(true)}
+              className="grid size-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+            >
+              <PanelLeftOpen className="size-5" />
+            </button>
+          </div>
+        )}
         {panel === 'orders' ? (
           <OrderWizardPage
             selectedProduct={picked}
             selectedFrom={pickedFrom}
             onOpenGallery={() => openForPick('gallery')}
             onOpenTemplates={() => openForPick('templates')}
-            onFinished={() => setPanel('templates')}
+            onFinished={() => go('templates')}
           />
         ) : panel === 'qr' ? (
           <QrGenerator />
@@ -345,7 +342,7 @@ export function TemplatesBoard() {
             onSubmit={(event) => {
               event.preventDefault()
               setQuery(draft)
-              if (panel === 'notification') setPanel('templates')
+              if (panel === 'notification') go('templates')
             }}
           >
             <button
@@ -353,8 +350,8 @@ export function TemplatesBoard() {
               aria-label="Show menu"
               onClick={() => setMenuOpen(true)}
               className={cn(
-                'grid h-11 shrink-0 place-items-center overflow-hidden rounded-xl text-slate-500 transition-all duration-500 ease-in-out hover:bg-slate-100',
-                menuOpen ? 'pointer-events-none -mr-3 w-0 min-w-0 px-0 opacity-0' : 'w-11 opacity-100',
+                'grid h-11 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 text-slate-500 transition-all duration-500 ease-in-out hover:bg-slate-100',
+                menuOpen ? 'pointer-events-none -mr-3 w-0 min-w-0 border-0 px-0 opacity-0' : 'w-11 bg-white opacity-100',
               )}
             >
               <PanelLeftOpen className="size-5" />
@@ -368,13 +365,20 @@ export function TemplatesBoard() {
             <button type="submit" className="h-11 shrink-0 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
               Search
             </button>
-            <Link
-              href={user ? '/account' : '/login'}
-              aria-label={user ? user.name : 'Account'}
-              className="grid size-11 shrink-0 place-items-center rounded-full border border-slate-200 text-slate-400 hover:text-slate-600"
+            <button
+              type="button"
+              aria-label="Notification"
+              onClick={() => {
+                setPicking(false)
+                go('notification')
+              }}
+              className={cn(
+                'grid size-11 shrink-0 place-items-center rounded-full border',
+                panel === 'notification' ? 'border-blue-200 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-400 hover:text-slate-600',
+              )}
             >
-              <User className="size-5" />
-            </Link>
+              <Bell className="size-5" />
+            </button>
           </form>
 
           {(panel === 'gallery' || panel === 'templates') && (

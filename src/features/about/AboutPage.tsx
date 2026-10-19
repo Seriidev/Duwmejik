@@ -6,9 +6,9 @@ import { cn } from '@/lib/cn'
 import { useLocaleStore, type Locale } from '@/store/useLocaleStore'
 
 const banners = [
-  { ru: 'Визитки', tk: 'Wizitkalar', tone: '' },
-  { ru: 'Буклеты', tk: 'Bukletler', tone: 'hue-rotate-60' },
-  { ru: 'Гравировка', tk: 'Lazer oýma', tone: 'hue-rotate-180' },
+  { ru: 'Визитки', en: 'Business cards', tk: 'Wizitkalar', tone: '' },
+  { ru: 'Буклеты', en: 'Brochures', tk: 'Bukletler', tone: 'hue-rotate-60' },
+  { ru: 'Гравировка', en: 'Engraving', tk: 'Lazer oýma', tone: 'hue-rotate-180' },
 ] as const
 
 const content = {
@@ -34,6 +34,32 @@ const content = {
       {
         title: 'Лазерная гравировка',
         text: 'Наносим рисунок на металл, дерево, стекло и кожу. Макет можно взять из каталога или прислать свой.',
+        icon: ScanLine,
+      },
+    ],
+  },
+  en: {
+    title: 'About',
+    lead: 'Duwmejik prepares the design, print, and finish for your brand. A ready template can be downloaded right away.',
+    points: [
+      {
+        title: 'Ready designs',
+        text: 'Business cards, brochures, banners, and gifts are already in the catalog. Download a design and send it to print.',
+        icon: Sparkles,
+      },
+      {
+        title: 'Print and quantity',
+        text: 'When you need a print run, the request calculates the time and price for the chosen service.',
+        icon: Printer,
+      },
+      {
+        title: 'Design for the job',
+        text: 'If a template is not enough, describe the job. The design is made for your brand.',
+        icon: PenLine,
+      },
+      {
+        title: 'Laser engraving',
+        text: 'We engrave metal, wood, glass, and leather. Use a catalog design or send your own.',
         icon: ScanLine,
       },
     ],

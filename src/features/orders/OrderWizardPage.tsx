@@ -1,10 +1,11 @@
 'use client'
 
-import { Check, ChevronDown, CircleCheck, Copy, Download, Gift, Image as ImageIcon, LayoutGrid, Palette, PenTool, Printer, ScanLine, Upload } from 'lucide-react'
+import { Check, CircleCheck, Copy, Download, Gift, Image as ImageIcon, LayoutGrid, Palette, PenTool, Printer, ScanLine, Upload } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import QRCode from 'qrcode'
 import cardPreview from '@/assets/card-preview.jpg'
+import { SmoothSelect } from '@/components/ui/SmoothSelect'
 import { estimate, SERVICE_ORDER, SERVICES } from '@/features/orders/pricing'
 import { createId } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -74,6 +75,7 @@ export function OrderWizardPage({
   const [created, setCreated] = useState<CustomOrder | null>(null)
   const [copied, setCopied] = useState(false)
   const [pickedTitle, setPickedTitle] = useState(selectedProduct?.title ?? '')
+  const [pickedId, setPickedId] = useState(selectedProduct?.id ?? '')
   const [pickedFrom, setPickedFrom] = useState<'gallery' | 'templates' | null>(selectedFrom ?? null)
 
   function applyDesign(product: Product) {
@@ -90,6 +92,7 @@ export function OrderWizardPage({
     setEmail(user?.email ?? email)
     setPhone(user?.phone || phone)
     setPickedTitle(product.title)
+    setPickedId(product.id)
     setError('')
   }
 
@@ -128,6 +131,7 @@ export function OrderWizardPage({
       quantity,
       references: files,
       brief: { source: files.length ? 'upload' : 'catalog', format, paper, company: '' },
+      productId: pickedId || undefined,
       createdAt: new Date().toISOString(),
     }
     addOrder(order)
@@ -305,63 +309,6 @@ function PickSource({
       <span className="mt-3 block text-sm font-semibold text-slate-900">{title}</span>
       <span className="mt-1 block truncate text-xs leading-4 text-slate-400">{chosen ? product : subtitle}</span>
     </button>
-  )
-}
-
-function SmoothSelect({
-  value,
-  options,
-  onChange,
-}: {
-  value: string
-  options: readonly string[]
-  onChange: (value: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const onPointer = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onPointer)
-    return () => document.removeEventListener('mousedown', onPointer)
-  }, [])
-
-  return (
-    <div ref={rootRef} className="relative">
-      <button
-        type="button"
-        className={cn(control, 'flex items-center justify-between text-left')}
-        onClick={() => setOpen((current) => !current)}
-      >
-        {value}
-        <ChevronDown className={cn('size-4 text-slate-400 transition duration-300', open && 'rotate-180')} />
-      </button>
-      <div
-        className={cn(
-          'absolute z-20 mt-1 w-full origin-top overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg transition duration-300',
-          open ? 'pointer-events-auto scale-y-100 opacity-100' : 'pointer-events-none scale-y-95 opacity-0',
-        )}
-      >
-        {options.map((item) => (
-          <button
-            key={item}
-            type="button"
-            className={cn(
-              'block w-full px-4 py-2.5 text-left text-sm transition hover:bg-blue-50',
-              item === value ? 'bg-blue-600 text-white hover:bg-blue-600' : 'text-slate-800',
-            )}
-            onClick={() => {
-              onChange(item)
-              setOpen(false)
-            }}
-          >
-            {item}
-          </button>
-        ))}
-      </div>
-    </div>
   )
 }
 
