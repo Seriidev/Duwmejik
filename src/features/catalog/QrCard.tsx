@@ -33,7 +33,7 @@ export function QrCard({ doc }: { doc: QrDoc }) {
 
   return (
     <div className="overflow-hidden bg-white">
-      <div className="px-6 pb-12 pt-8 text-center text-white" style={{ background: `linear-gradient(180deg, ${secondary} 0%, ${primary} 100%)` }}>
+      <div className="px-6 pt-14 pb-12 text-center text-white" style={{ background: `linear-gradient(180deg, ${secondary} 0%, ${primary} 100%)` }}>
         {photo ? (
           <img src={photo} alt="" className="mx-auto size-24 rounded-full object-cover ring-4 ring-white/50" />
         ) : (
@@ -99,12 +99,16 @@ function body(doc: QrDoc, primary: string) {
   if (doc.kind === 'menu') {
     return (
       <div className="divide-y divide-slate-100">
-        {doc.items.filter((item) => item.label || item.value).map((item, index) => (
-          <div key={index} className="flex items-baseline justify-between gap-3 py-2 text-sm">
-            <span className="font-medium text-slate-900">{item.label}</span>
-            <span className="text-slate-500">{item.value}</span>
-          </div>
-        ))}
+        {doc.items.filter((item) => item.label || item.value || item.image).map((item, index) => {
+          const image = item.image ? photoSrc(item.image) : ''
+          return (
+            <div key={index} className="flex items-center gap-3 py-2 text-sm">
+              {image && <img src={image} alt="" className="size-12 shrink-0 rounded-xl object-cover" />}
+              <span className="min-w-0 flex-1 font-medium text-slate-900">{item.label}</span>
+              <span className="text-slate-500">{item.value}</span>
+            </div>
+          )
+        })}
       </div>
     )
   }

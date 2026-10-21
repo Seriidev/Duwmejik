@@ -16,7 +16,7 @@ export type QrKind =
   | 'coupon'
   | 'wifi'
 
-export type QrItem = { label: string; value: string }
+export type QrItem = { label: string; value: string; image?: string }
 
 export type QrDoc = {
   kind: QrKind
@@ -88,7 +88,13 @@ export function encodeQrDoc(doc: QrDoc) {
       ;(compact as Record<string, unknown>)[key] = value.trim()
     }
     if (Array.isArray(value)) {
-      const items = value.filter((item) => item.label.trim() || item.value.trim())
+      const items = value
+        .map((item) => {
+          const next: QrItem = { label: item.label.trim(), value: item.value.trim() }
+          if (item.image && item.image.length <= 700) next.image = item.image
+          return next
+        })
+        .filter((item) => item.label || item.value || item.image)
       if (items.length) compact.items = items
     }
   })

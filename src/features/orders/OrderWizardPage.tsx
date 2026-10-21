@@ -153,8 +153,7 @@ export function OrderWizardPage({
 
   return (
     <Shell>
-      <h1 className="text-2xl font-bold tracking-tight text-slate-900">Способ заказа</h1>
-      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {SERVICE_ORDER.map((id) => {
           const active = service === id
           const Icon = serviceIcons[id]
@@ -313,11 +312,7 @@ function PickSource({
 }
 
 function Shell({ children }: { children: ReactNode }) {
-  return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8">
-      <div className="rounded-[28px] bg-white px-5 py-7 shadow-[0_18px_50px_rgba(15,23,42,0.08)] sm:px-8">{children}</div>
-    </div>
-  )
+  return <div className="w-full bg-white px-6 pb-10">{children}</div>
 }
 
 function SuccessCard({

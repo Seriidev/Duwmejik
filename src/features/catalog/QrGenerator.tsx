@@ -70,15 +70,33 @@ const palettes = [
 
 const steps = ['Select QR type', 'Add content', 'Design QR code', 'Download QR code']
 
+function previewDoc(kind: QrKind): QrDoc {
+  const base = { ...emptyQrDoc(), kind, primary: '#2563EB', secondary: '#BFDBFE' }
+  if (kind === 'pdf') return { ...base, title: 'Annual Report', text: 'Our best year yet. See how the numbers look.', url: 'https://example.com/report.pdf' }
+  if (kind === 'video') return { ...base, title: 'Showreel', text: 'A short film about the work.', url: 'https://example.com/showreel' }
+  if (kind === 'mp3') return { ...base, title: 'Track', text: 'Listen to the audio.', url: 'https://example.com/track.mp3' }
+  if (kind === 'vcard') return { ...base, name: 'Alvaro', surname: 'Morte', role: 'General Director', phone: '+993 65 000000', email: 'alvaro@duwmejik.com', company: 'Duwmejik' }
+  if (kind === 'business') return { ...base, company: 'Duwmejik', text: 'Print house in Ashgabat.', phone: '+993 65 000000', email: 'hello@duwmejik.com', site: 'https://duwmejik.com', address: 'Ashgabat' }
+  if (kind === 'menu') return { ...base, title: 'Lunch menu', items: [{ label: 'Soup', value: '12 TMT' }, { label: 'Salad', value: '18 TMT' }, { label: 'Tea', value: '4 TMT' }] }
+  if (kind === 'coupon') return { ...base, title: 'Welcome gift', code: 'PRINT10', message: '31 Dec', text: '10% off the first order.' }
+  if (kind === 'links') return { ...base, title: 'Useful links', items: [{ label: 'Website', value: 'https://duwmejik.com' }, { label: 'Catalog', value: 'https://duwmejik.com/templates' }] }
+  if (kind === 'social') return { ...base, title: 'Duwmejik', name: 'duwmejik', url: 'https://facebook.com/duwmejik', site: 'https://duwmejik.com', phone: '99365000000' }
+  if (kind === 'website' || kind === 'facebook' || kind === 'apps') return { ...base, title: kind === 'website' ? 'Website' : kind === 'facebook' ? 'Facebook' : 'App', url: 'https://duwmejik.com' }
+  if (kind === 'instagram') return { ...base, name: 'duwmejik', title: 'Instagram' }
+  if (kind === 'whatsapp') return { ...base, phone: '99365000000', title: 'WhatsApp' }
+  if (kind === 'wifi') return { ...base, ssid: 'Duwmejik Guest', password: 'welcome' }
+  return { ...base, title: 'Gallery', text: 'A few photos in one page.' }
+}
+
 function rows(doc: QrDoc, count: number) {
   const items = doc.items.slice(0, count)
   while (items.length < count) items.push({ label: '', value: '' })
   return items
 }
 
-async function shrinkPhoto(file: File) {
+async function shrinkPhoto(file: File, limit = 1500) {
   const bitmap = await createImageBitmap(file)
-  let size = 72
+  let size = limit > 1000 ? 72 : 48
   let quality = 0.62
   let data = ''
   for (let attempt = 0; attempt < 6; attempt += 1) {
@@ -92,8 +110,8 @@ async function shrinkPhoto(file: File) {
     const height = bitmap.height * scale
     context.drawImage(bitmap, (size - width) / 2, (size - height) / 2, width, height)
     data = canvas.toDataURL('image/jpeg', quality)
-    if (data.length < 1600) break
-    size = Math.max(40, size - 8)
+    if (data.length < limit) break
+    size = Math.max(36, size - 8)
     quality = Math.max(0.35, quality - 0.08)
   }
   bitmap.close()
@@ -113,6 +131,7 @@ export function QrGenerator() {
   const [ink, setInk] = useState('#111827')
   const [paper, setPaper] = useState('#ffffff')
   const [src, setSrc] = useState('')
+  const [hoverKind, setHoverKind] = useState<QrKind>('pdf')
 
   useEffect(() => {
     function onPop() {
@@ -157,7 +176,7 @@ export function QrGenerator() {
     setDoc((current) => ({ ...current, ...partial }))
   }
 
-  function setItem(index: number, key: 'label' | 'value', value: string, count: number) {
+  function setItem(index: number, key: 'label' | 'value' | 'image', value: string, count: number) {
     const items = rows(doc, count)
     items[index] = { ...items[index], [key]: value }
     patch({ items })
@@ -174,29 +193,48 @@ export function QrGenerator() {
         }}
       />
       {step === 1 ? (
-        <div className="mx-auto mt-8 max-w-3xl">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-950">1. Select QR type</h1>
-          <div className="mt-5 grid gap-2 sm:grid-cols-2">
-            {types.map((type) => (
-              <button
-                key={type.id}
-                type="button"
-                onClick={() => {
-                  patch({ kind: type.id })
-                  goStep(2)
-                  setView('page')
-                }}
-                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left hover:border-emerald-300 hover:bg-emerald-50/40"
-              >
-                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-500">
-                  <type.icon className="size-4" />
-                </span>
-                <span>
-                  <span className="block text-sm font-semibold text-slate-900">{type.title}</span>
-                  <span className="block text-xs text-slate-400">{type.text}</span>
-                </span>
-              </button>
-            ))}
+        <div className="mx-auto mt-8 grid w-full max-w-5xl items-start gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-950">1. Select QR type</h1>
+            <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              {types.map((type) => {
+                const active = hoverKind === type.id
+                return (
+                  <button
+                    key={type.id}
+                    type="button"
+                    onMouseEnter={() => setHoverKind(type.id)}
+                    onClick={() => {
+                      patch({ kind: type.id })
+                      goStep(2)
+                      setView('page')
+                    }}
+                    className={cn(
+                      'flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left',
+                      active ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/70',
+                    )}
+                  >
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-blue-100 text-blue-600">
+                      <type.icon className="size-4" />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-900">{type.title}</span>
+                      <span className="block text-xs text-slate-400">{type.text}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <div className="sticky top-4 hidden lg:block">
+            <div className="mx-auto w-[270px] rounded-[40px] border-[8px] border-slate-900 bg-slate-900 shadow-[0_20px_50px_rgba(15,23,42,0.18)]">
+              <div className="relative h-[540px] overflow-hidden rounded-[32px] bg-white">
+                <div className="absolute top-2 left-1/2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-slate-900" />
+                <div className="h-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <QrCard doc={previewDoc(hoverKind)} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       ) : (
@@ -215,7 +253,7 @@ export function QrGenerator() {
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="inline-flex h-11 items-center gap-2 rounded-lg border border-emerald-500 bg-white px-4 text-sm font-semibold text-emerald-600"
+                className="inline-flex h-11 items-center gap-2 rounded-lg border border-blue-600 bg-white px-4 text-sm font-semibold text-blue-700"
               >
                 <ArrowLeft className="size-4" />
                 Back
@@ -224,7 +262,7 @@ export function QrGenerator() {
                 <button
                   type="button"
                   onClick={() => goStep(step + 1)}
-                  className="inline-flex h-11 items-center gap-2 rounded-lg bg-emerald-500 px-5 text-sm font-semibold text-white hover:bg-emerald-600"
+                  className="inline-flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700"
                 >
                   Next
                   <ArrowRight className="size-4" />
@@ -260,14 +298,14 @@ function Stepper({ step, onStep }: { step: number; onStep: (step: number) => voi
               <span
                 className={cn(
                   'grid size-6 place-items-center rounded-full text-xs font-bold',
-                  done || current ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500',
+                  done || current ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500',
                 )}
               >
                 {done ? <Check className="size-3.5" /> : number}
               </span>
-              <span className={cn('font-medium', current ? 'text-emerald-600' : done ? 'text-slate-700' : 'text-slate-400')}>{label}</span>
+              <span className={cn('font-medium', current ? 'text-blue-700' : done ? 'text-slate-700' : 'text-slate-400')}>{label}</span>
             </button>
-            {number < steps.length && <span className={cn('hidden h-px w-6 sm:block', number < step ? 'bg-emerald-400' : 'bg-slate-200')} />}
+            {number < steps.length && <span className={cn('hidden h-px w-6 sm:block', number < step ? 'bg-blue-400' : 'bg-slate-200')} />}
           </div>
         )
       })}
@@ -282,7 +320,7 @@ function ContentForm({
 }: {
   doc: QrDoc
   onPatch: (partial: Partial<QrDoc>) => void
-  onItem: (index: number, key: 'label' | 'value', value: string, count: number) => void
+  onItem: (index: number, key: 'label' | 'value' | 'image', value: string, count: number) => void
 }) {
   const hosted = doc.kind === 'vcard' || doc.kind === 'business' || doc.kind === 'menu' || doc.kind === 'coupon' || doc.kind === 'links' || doc.kind === 'social' || doc.kind === 'images' || doc.kind === 'pdf' || doc.kind === 'video' || doc.kind === 'mp3'
   return (
@@ -419,7 +457,7 @@ function ListFields({
 }: {
   doc: QrDoc
   onPatch: (partial: Partial<QrDoc>) => void
-  onItem: (index: number, key: 'label' | 'value', value: string, count: number) => void
+  onItem: (index: number, key: 'label' | 'value' | 'image', value: string, count: number) => void
 }) {
   const count = doc.kind === 'menu' ? 6 : 4
   const title = doc.kind === 'menu' ? 'Menu' : doc.kind === 'images' ? 'Images' : 'Links'
@@ -428,12 +466,34 @@ function ListFields({
   const right = doc.kind === 'images' ? 'Image URL' : doc.kind === 'menu' ? 'Price' : 'URL'
   return (
     <Section icon={<List className="size-4" />} title={title} text={text}>
-      <Field label={doc.kind === 'menu' ? 'Restaurant' : 'Title'} value={doc.title} onChange={(title) => onPatch({ title })} />
+      <div className={cn('flex gap-3', doc.kind === 'menu' ? 'items-end' : '')}>
+        {doc.kind === 'menu' && <PhotoField label="Logo" photo={doc.photo} onPhoto={(photo) => onPatch({ photo })} />}
+        <div className="min-w-0 flex-1">
+          <Field label={doc.kind === 'menu' ? 'Restaurant' : 'Title'} value={doc.title} onChange={(title) => onPatch({ title })} />
+        </div>
+      </div>
       <div className="mt-3 grid gap-2">
         {rows(doc, count).map((item, index) => (
-          <div key={index} className="grid gap-2 sm:grid-cols-2">
-            <input className="h-11 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500" value={item.label} placeholder={left} onChange={(event) => onItem(index, 'label', event.target.value, count)} />
-            <input className="h-11 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500" value={item.value} placeholder={right} onChange={(event) => onItem(index, 'value', event.target.value, count)} />
+          <div key={index} className={cn('grid gap-2', doc.kind === 'menu' ? 'grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)]' : 'sm:grid-cols-2')}>
+            {doc.kind === 'menu' && (
+              <label className="grid size-11 cursor-pointer place-items-center overflow-hidden rounded-lg border border-dashed border-blue-300 text-blue-600">
+                {item.image ? <img src={item.image} alt="" className="size-full object-cover" /> : <ImagePlus className="size-4" />}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  aria-label={`Photo ${index + 1}`}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    event.target.value = ''
+                    if (!file) return
+                    shrinkPhoto(file, 700).then((image) => onItem(index, 'image', image, count))
+                  }}
+                />
+              </label>
+            )}
+            <input className="h-11 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600" value={item.label} placeholder={left} onChange={(event) => onItem(index, 'label', event.target.value, count)} />
+            <input className="h-11 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-600" value={item.value} placeholder={right} onChange={(event) => onItem(index, 'value', event.target.value, count)} />
           </div>
         ))}
       </div>
@@ -454,7 +514,7 @@ function DesignSection({ doc, onPatch }: { doc: QrDoc; onPatch: (partial: Partia
               type="button"
               aria-label={`${primary} ${secondary}`}
               onClick={() => onPatch({ primary, secondary })}
-              className={cn('grid grid-cols-2 overflow-hidden rounded-md border-2', active ? 'border-emerald-500' : 'border-transparent')}
+              className={cn('grid grid-cols-2 overflow-hidden rounded-md border-2', active ? 'border-blue-600' : 'border-transparent')}
             >
               <span className="size-7" style={{ background: primary }} />
               <span className="size-7" style={{ background: secondary }} />
@@ -468,7 +528,7 @@ function DesignSection({ doc, onPatch }: { doc: QrDoc; onPatch: (partial: Partia
           type="button"
           aria-label="Swap colors"
           onClick={() => onPatch({ primary: doc.secondary, secondary: doc.primary })}
-          className="mb-0.5 grid size-9 place-items-center rounded-full border border-emerald-500 text-emerald-600"
+          className="mb-0.5 grid size-9 place-items-center rounded-full border border-blue-600 text-blue-700"
         >
           <ArrowLeftRight className="size-4" />
         </button>
@@ -493,7 +553,7 @@ function DownloadForm({ src, ready, kind }: { src: string; ready: boolean; kind:
   return (
     <Section icon={<Download className="size-4" />} title={kind} text={ready ? 'Save the image and share it.' : 'Go back and fill in the form first.'}>
       {src ? (
-        <a href={src} download="qr-code.png" className="inline-flex h-11 items-center gap-2 rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">
+        <a href={src} download="qr-code.png" className="inline-flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">
           <Download className="size-4" />
           Download QR Code
         </a>
@@ -524,11 +584,11 @@ function Section({ icon, title, text, children }: { icon: ReactNode; title: stri
   )
 }
 
-function PhotoField({ photo, onPhoto }: { photo: string; onPhoto: (photo: string) => void }) {
+function PhotoField({ photo, onPhoto, label = 'Image' }: { photo: string; onPhoto: (photo: string) => void; label?: string }) {
   return (
     <div>
-      <p className="text-sm font-semibold text-slate-800">Image</p>
-      <label className="mt-2 grid size-20 cursor-pointer place-items-center overflow-hidden rounded-xl border border-dashed border-emerald-400 text-emerald-500">
+      <p className="text-sm font-semibold text-slate-800">{label}</p>
+      <label className="mt-2 grid size-20 cursor-pointer place-items-center overflow-hidden rounded-xl border border-dashed border-blue-400 text-blue-600">
         {photo ? <img src={photo} alt="" className="size-full object-cover" /> : <ImagePlus className="size-6" />}
         <input
           type="file"
@@ -610,10 +670,10 @@ function PhoneFrame({
     <aside className="lg:sticky lg:top-4">
       <div className="mb-3 flex justify-center">
         <div className="inline-flex rounded-full bg-white p-1 shadow-sm">
-          <button type="button" onClick={() => onView('page')} className={cn('h-8 rounded-full px-4 text-sm font-semibold', view === 'page' ? 'bg-emerald-500 text-white' : 'text-slate-500')}>
+          <button type="button" onClick={() => onView('page')} className={cn('h-8 rounded-full px-4 text-sm font-semibold', view === 'page' ? 'bg-blue-600 text-white' : 'text-slate-500')}>
             Preview
           </button>
-          <button type="button" onClick={() => onView('qr')} className={cn('h-8 rounded-full px-4 text-sm font-semibold', view === 'qr' ? 'bg-emerald-500 text-white' : 'text-slate-500')}>
+          <button type="button" onClick={() => onView('qr')} className={cn('h-8 rounded-full px-4 text-sm font-semibold', view === 'qr' ? 'bg-blue-600 text-white' : 'text-slate-500')}>
             QR code
           </button>
         </div>
@@ -626,7 +686,7 @@ function PhoneFrame({
               {src ? <img src={src} alt="QR code" className="w-full" /> : <span className="text-sm text-slate-400">Fill in the form</span>}
             </div>
           ) : (
-            <div className="h-full overflow-y-auto pt-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
+            <div className="h-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
           )}
         </div>
       </div>

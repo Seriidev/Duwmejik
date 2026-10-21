@@ -311,18 +311,12 @@ export function TemplatesBoard() {
       </aside>
       </div>
 
-      <div className={cn('flex min-h-svh min-w-0 flex-1 flex-col', (panel === 'orders' || panel === 'qr') && 'bg-surface')}>
-        {(panel === 'orders' || panel === 'qr') && (
-          <div className={cn('flex px-4 sm:px-6', menuOpen ? 'h-0 overflow-hidden' : 'pt-4')}>
-            <button
-              type="button"
-              aria-label="Show menu"
-              onClick={() => setMenuOpen(true)}
-              className="grid size-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-            >
-              <PanelLeftOpen className="size-5" />
-            </button>
-          </div>
+      <div className={cn('flex min-h-svh min-w-0 flex-1 flex-col', panel === 'qr' && 'bg-surface')}>
+        {panel === 'orders' && (
+          <PanelHeader title="Способ заказа" menuOpen={menuOpen} onShowMenu={() => setMenuOpen(true)} onBell={() => { setPicking(false); go('notification') }} />
+        )}
+        {panel === 'qr' && (
+          <PanelHeader title="QR code generate" menuOpen={menuOpen} onShowMenu={() => setMenuOpen(true)} onBell={() => { setPicking(false); go('notification') }} />
         )}
         {panel === 'orders' ? (
           <OrderWizardPage
@@ -337,12 +331,24 @@ export function TemplatesBoard() {
         ) : (
         <>
         <div className="sticky top-0 z-20 bg-white px-6 pb-4 pt-5">
+          {panel === 'notification' ? (
+            <PanelHeader
+              title="Notification"
+              menuOpen={menuOpen}
+              onShowMenu={() => setMenuOpen(true)}
+              onBell={() => {
+                setPicking(false)
+                go('notification')
+              }}
+              bellActive
+              bare
+            />
+          ) : (
           <form
             className="flex items-center gap-3"
             onSubmit={(event) => {
               event.preventDefault()
               setQuery(draft)
-              if (panel === 'notification') go('templates')
             }}
           >
             <button
@@ -372,14 +378,12 @@ export function TemplatesBoard() {
                 setPicking(false)
                 go('notification')
               }}
-              className={cn(
-                'grid size-11 shrink-0 place-items-center rounded-full border',
-                panel === 'notification' ? 'border-blue-200 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-400 hover:text-slate-600',
-              )}
+              className="grid size-11 shrink-0 place-items-center rounded-full border border-slate-200 text-slate-400 hover:text-slate-600"
             >
               <Bell className="size-5" />
             </button>
           </form>
+          )}
 
           {(panel === 'gallery' || panel === 'templates') && (
             <div className="mt-4 flex flex-wrap gap-2">
@@ -502,6 +506,52 @@ export function TemplatesBoard() {
       />
     </div>
   )
+}
+
+function PanelHeader({
+  title,
+  menuOpen,
+  onShowMenu,
+  onBell,
+  bellActive = false,
+  bare = false,
+}: {
+  title: string
+  menuOpen: boolean
+  onShowMenu: () => void
+  onBell: () => void
+  bellActive?: boolean
+  bare?: boolean
+}) {
+  const row = (
+    <div className="flex h-11 items-center gap-3">
+      <button
+        type="button"
+        aria-label="Show menu"
+        onClick={onShowMenu}
+        className={cn(
+          'grid h-11 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 text-slate-500 transition-all duration-500 ease-in-out hover:bg-slate-100',
+          menuOpen ? 'pointer-events-none -mr-3 w-0 min-w-0 border-0 px-0 opacity-0' : 'w-11 bg-white opacity-100',
+        )}
+      >
+        <PanelLeftOpen className="size-5" />
+      </button>
+      <h1 className="min-w-0 flex-1 text-2xl font-semibold tracking-tight text-slate-950">{title}</h1>
+      <button
+        type="button"
+        aria-label="Notification"
+        onClick={onBell}
+        className={cn(
+          'grid size-11 shrink-0 place-items-center rounded-full border',
+          bellActive ? 'border-blue-200 bg-blue-50 text-blue-600' : 'border-slate-200 bg-white text-slate-400 hover:text-slate-600',
+        )}
+      >
+        <Bell className="size-5" />
+      </button>
+    </div>
+  )
+  if (bare) return row
+  return <div className="sticky top-0 z-20 bg-white px-6 pb-4 pt-5">{row}</div>
 }
 
 function SimilarIcon() {

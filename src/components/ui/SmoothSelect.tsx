@@ -63,7 +63,7 @@ export function SmoothSelect({
       </button>
       <div
         className={cn(
-          'absolute z-30 mt-1 w-full origin-top overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg transition duration-300',
+          'absolute top-full z-30 -mt-px w-full origin-top overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg transition duration-300',
           open ? 'pointer-events-auto scale-y-100 opacity-100' : 'pointer-events-none scale-y-95 opacity-0',
         )}
       >
