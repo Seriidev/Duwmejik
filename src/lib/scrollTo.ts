@@ -1,4 +1,15 @@
 let frame = 0
+let manual = false
+
+export function markManualScroll() {
+  manual = true
+}
+
+export function consumeManualScroll() {
+  const value = manual
+  manual = false
+  return value
+}
 
 function animateScroll(top: number) {
   cancelAnimationFrame(frame)
@@ -11,11 +22,11 @@ function animateScroll(top: number) {
   const start = window.scrollY
   const distance = destination - start
   if (Math.abs(distance) < 2) return
-  const duration = Math.min(1100, 650 + Math.abs(distance) * 0.28)
+  const duration = Math.min(1200, Math.max(720, Math.abs(distance) * 0.5))
   const started = performance.now()
   const step = (now: number) => {
     const progress = Math.min(1, (now - started) / duration)
-    const ease = 1 - Math.pow(1 - progress, 3)
+    const ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2
     window.scrollTo({ top: start + distance * ease, behavior: 'instant' })
     if (progress < 1) frame = requestAnimationFrame(step)
   }
@@ -36,6 +47,6 @@ export function scrollToId(id: string) {
     scrollToTop()
     return
   }
-  const top = target.getBoundingClientRect().top + window.scrollY - 88
+  const top = target.getBoundingClientRect().top + window.scrollY - 112
   animateScroll(top)
 }

@@ -31,17 +31,17 @@ const categoryIcons: Record<string, IconType> = {
 
 const iconTone: Record<string, string> = {
   cards: 'text-blue-500',
-  brochures: 'text-violet-500',
+  brochures: 'text-blue-500',
   books: 'text-emerald-500',
   mugs: 'text-orange-500',
   pens: 'text-sky-500',
   notebooks: 'text-teal-500',
   forms: 'text-blue-500',
-  banners: 'text-violet-500',
+  banners: 'text-blue-500',
   flyers: 'text-rose-500',
   packaging: 'text-amber-500',
   stickers: 'text-fuchsia-500',
-  postcards: 'text-violet-500',
+  postcards: 'text-blue-500',
 }
 
 export function CategoryPill({ category, active = false }: { category: Category; active?: boolean }) {

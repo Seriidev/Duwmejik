@@ -20,16 +20,25 @@ export function Reveal({
       setShown(true)
       return
     }
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting) return
+    let stopped = false
+    const show = () => {
+      if (stopped) return
+      const rect = node.getBoundingClientRect()
+      if (rect.top < window.innerHeight * 0.86 && rect.bottom > 32) {
+        stopped = true
         setShown(true)
-        observer.disconnect()
-      },
-      { threshold: 0.18, rootMargin: '0px 0px -8% 0px' },
-    )
-    observer.observe(node)
-    return () => observer.disconnect()
+        window.removeEventListener('scroll', show)
+        window.removeEventListener('resize', show)
+      }
+    }
+    show()
+    window.addEventListener('scroll', show, { passive: true })
+    window.addEventListener('resize', show)
+    return () => {
+      stopped = true
+      window.removeEventListener('scroll', show)
+      window.removeEventListener('resize', show)
+    }
   }, [])
 
   return (

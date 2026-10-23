@@ -8,7 +8,7 @@ type Topic = (typeof topics)[number]
 
 const content = {
   ru: {
-    title: 'Контакты',
+    title: 'Наши контакты',
     addressLabel: 'Адрес',
     address: 'Дом 79, просп. Великого Сапармурата Туркменбаши 79, Aşgabat 744000, Turkmenistan',
     phoneLabel: 'Телефоны',
@@ -33,7 +33,7 @@ const content = {
     sent: 'Сообщение принято. Мы ответим на указанную почту.',
   },
   en: {
-    title: 'Contacts',
+    title: 'Contact us',
     addressLabel: 'Address',
     address: 'Дом 79, просп. Великого Сапармурата Туркменбаши 79, Aşgabat 744000, Turkmenistan',
     phoneLabel: 'Phones',
@@ -98,19 +98,19 @@ export function ContactSection() {
   }
 
   return (
-    <section id="contacts" className="mx-auto max-w-6xl scroll-mt-28 px-4 pb-16 sm:px-6">
-      <div className="rounded-[32px] bg-white p-6 shadow-[0_16px_50px_rgba(55,70,120,0.08)] sm:p-10">
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(320px,440px)]">
+    <section id="contacts" className="mx-auto mt-4 max-w-[1180px] scroll-mt-28 px-4 sm:px-6">
+      <div className="rounded-[24px] bg-[#EEEFF3] p-4 sm:rounded-[28px] sm:p-6 md:p-8">
+        <div className="grid items-start gap-6 md:grid-cols-2 md:gap-8">
           <Reveal>
           <div>
-            <h2 className="text-4xl font-semibold tracking-tight">{page.title}</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{page.title}</h2>
             <div className="mt-6 divide-y divide-slate-200">
               <Info label={page.addressLabel} lines={[page.address]} />
               <Info label={page.phoneLabel} lines={[...page.phones]} emphasis />
               <Info label={page.emailLabel} lines={[...page.emails]} />
               <Info label={page.hoursLabel} lines={[...page.hours]} />
               <Info label={page.liveLabel} lines={[page.live]} />
-              <div className="py-5">
+              <div className="py-3.5">
                 <p className="font-semibold">{page.finance}</p>
                 <p className="mt-2 text-base font-semibold text-slate-900">{page.phones[0]}</p>
               </div>
@@ -119,13 +119,13 @@ export function ContactSection() {
           </Reveal>
 
           <Reveal delay={120}>
-          <form onSubmit={onSubmit} className="rounded-[28px] bg-blue-600 p-6 text-white sm:p-7">
+          <form onSubmit={onSubmit} className="rounded-[24px] bg-brand p-4 text-white sm:rounded-[28px] sm:p-7">
             <p className="text-sm font-semibold tracking-[0.14em]">{page.write.toUpperCase()}</p>
             {sent ? (
               <p className="mt-6 leading-7 text-white/90">{page.sent}</p>
             ) : (
               <>
-                <div className="mt-5 grid grid-cols-3 gap-2">
+                <div className="mt-5 grid grid-cols-3 gap-1.5 sm:gap-2">
                   {topics.map((item) => (
                     <button
                       key={item}
@@ -133,8 +133,8 @@ export function ContactSection() {
                       onClick={() => setTopic(item)}
                       className={
                         topic === item
-                          ? 'h-10 rounded-full bg-white text-sm font-semibold text-slate-900'
-                          : 'h-10 rounded-full text-sm font-semibold text-white/90 hover:bg-white/10'
+                          ? 'h-10 rounded-full bg-white px-1 text-xs font-semibold text-slate-900 sm:text-sm'
+                          : 'h-10 rounded-full px-1 text-xs font-semibold text-white/90 hover:bg-white/10 sm:text-sm'
                       }
                     >
                       {page.tabs[item]}
@@ -142,7 +142,7 @@ export function ContactSection() {
                   ))}
                 </div>
                 <input type="hidden" name="topic" value={topic} />
-                <div className="mt-4 grid grid-cols-2 gap-2">
+                <div className="mt-4 grid grid-cols-1 gap-2 min-[480px]:grid-cols-2">
                   <input
                     required
                     name="name"
@@ -200,7 +200,7 @@ export function ContactSection() {
                   <input required name="consent" type="checkbox" className="mt-0.5 size-5 shrink-0 accent-white" />
                   <span>{page.consent}</span>
                 </label>
-                <button type="submit" className="mt-5 h-14 w-full rounded-full bg-white text-base font-semibold text-slate-900">
+                <button type="submit" className="mt-5 h-11 rounded-full bg-white px-8 text-sm font-semibold text-slate-900">
                   {page.send}
                 </button>
               </>
@@ -215,7 +215,7 @@ export function ContactSection() {
 
 function Info({ label, lines, href, emphasis }: { label: string; lines: string[]; href?: string; emphasis?: boolean }) {
   return (
-    <div className="py-5">
+    <div className="py-3.5">
       <p className="font-semibold">{label}</p>
       <div className={emphasis ? 'mt-2 grid gap-1 text-base font-semibold text-slate-900' : 'mt-2 grid gap-1 text-slate-700'}>
         {lines.map((line) =>

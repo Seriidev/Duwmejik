@@ -4,7 +4,7 @@ import { cn } from '@/lib/cn'
 const tones = {
   neutral: 'bg-soft text-ink',
   free: 'bg-emerald-100 text-emerald-800',
-  premium: 'bg-violet-100 text-violet-800',
+  premium: 'bg-blue-100 text-blue-800',
   pending: 'bg-amber-100 text-amber-900',
   ok: 'bg-emerald-100 text-emerald-800',
   bad: 'bg-rose-100 text-rose-800',

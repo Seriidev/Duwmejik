@@ -90,7 +90,7 @@ export function LoginPage() {
           </form>
           <p className="mt-5 text-center text-sm text-muted">
             {mode === 'login' ? 'Нет аккаунта?' : 'Уже есть аккаунт?'}{' '}
-            <button type="button" className="font-medium text-violet-700" onClick={switchMode}>
+            <button type="button" className="font-medium text-blue-700" onClick={switchMode}>
               {mode === 'login' ? 'Зарегистрироваться' : 'Войти'}
             </button>
           </p>

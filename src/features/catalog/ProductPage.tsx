@@ -39,7 +39,7 @@ export function ProductPage() {
     return (
       <div className="mx-auto max-w-lg px-4 py-24 text-center">
         <h1 className="text-3xl font-semibold">Макет не найден</h1>
-        <Link href="/catalog" className={cn('mt-6 inline-flex', 'text-violet-600')}>
+        <Link href="/catalog" className={cn('mt-6 inline-flex', 'text-blue-600')}>
           Вернуться в каталог
         </Link>
       </div>
@@ -101,7 +101,7 @@ export function ProductPage() {
                 type="button"
                 aria-label={`Превью ${index + 1}`}
                 onClick={() => setSlide(index)}
-                className={cn('w-24 overflow-hidden rounded-xl border', slide === index ? 'border-violet-600' : 'border-line')}
+                className={cn('w-24 overflow-hidden rounded-xl border', slide === index ? 'border-blue-600' : 'border-line')}
               >
                 <TemplateArt categoryId={product.categoryId} accent={product.accent} seed={product.seed + index} className="aspect-[4/3]" />
               </button>

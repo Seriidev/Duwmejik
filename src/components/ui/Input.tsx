@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn'
 import { SmoothSelect } from '@/components/ui/SmoothSelect'
 
 const field =
-  'w-full rounded-xl border border-line bg-card px-3 text-ink outline-none ring-violet-500/30 placeholder:text-muted focus:ring-2'
+  'w-full rounded-xl border border-line bg-card px-3 text-ink outline-none ring-blue-500/30 placeholder:text-muted focus:ring-2'
 
 export function Input({
   label,

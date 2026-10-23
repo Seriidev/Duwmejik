@@ -69,7 +69,6 @@ export function AccountPage() {
   const router = useRouter()
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
-  const setRole = useAuthStore((state) => state.setRole)
   const updateProfile = useAuthStore((state) => state.updateProfile)
   const changePassword = useAuthStore((state) => state.changePassword)
   const orders = useAccountStore((state) => state.orders)
@@ -83,7 +82,6 @@ export function AccountPage() {
   const [tab, setTab] = useState<Tab>('orders')
   const [openOrderId, setOpenOrderId] = useState<string | null>(null)
   const [previewId, setPreviewId] = useState<string | null>(null)
-  const [confirmDesigner, setConfirmDesigner] = useState(false)
   const [first, setFirst] = useState('')
   const [last, setLast] = useState('')
   const [email, setEmail] = useState('')
@@ -219,35 +217,9 @@ export function AccountPage() {
         </div>
 
         {user.role === 'buyer' ? (
-          confirmDesigner ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setRole(user.id, 'seller')
-                  setConfirmDesigner(false)
-                }}
-                className="h-11 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700"
-              >
-                Подтвердить
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmDesigner(false)}
-                className="h-11 rounded-full border border-slate-200 px-5 text-sm font-semibold text-slate-700"
-              >
-                Отмена
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setConfirmDesigner(true)}
-              className="h-11 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700"
-            >
-              Стать дизайнером
-            </button>
-          )
+          <Link href="/templates?section=orders" className="inline-flex h-11 items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
+            Оформить заказ
+          </Link>
         ) : user.role === 'seller' ? (
           <Link href="/seller" className="inline-flex h-11 items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
             Кабинет дизайнера

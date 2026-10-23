@@ -7,25 +7,25 @@ const HOLD_MS = 1600
 
 const phrases = {
   ru: [
-    { accent: 'Дизайн', rest: ' полиграфии', tone: 'text-violet-600' },
+    { accent: 'Дизайн', rest: ' полиграфии', tone: 'text-blue-800' },
     { accent: 'Оперативная', rest: ' полиграфия', tone: 'text-blue-600' },
-    { accent: 'Цифровая', rest: ' типография', tone: 'text-violet-600' },
+    { accent: 'Цифровая', rest: ' типография', tone: 'text-blue-800' },
     { accent: 'Постпечатные', rest: ' услуги', tone: 'text-blue-600' },
-    { accent: 'Лазерная', rest: ' гравировка', tone: 'text-violet-600' },
+    { accent: 'Лазерная', rest: ' гравировка', tone: 'text-blue-800' },
   ],
   tk: [
-    { accent: 'Çap', rest: ' dizaýny', tone: 'text-violet-600' },
+    { accent: 'Çap', rest: ' dizaýny', tone: 'text-blue-800' },
     { accent: 'Çalt', rest: ' poligrafiýa', tone: 'text-blue-600' },
-    { accent: 'Sanly', rest: ' çap', tone: 'text-violet-600' },
+    { accent: 'Sanly', rest: ' çap', tone: 'text-blue-800' },
     { accent: 'Çapdan soňky', rest: ' hyzmatlar', tone: 'text-blue-600' },
-    { accent: 'Lazer', rest: ' grawirowka', tone: 'text-violet-600' },
+    { accent: 'Lazer', rest: ' grawirowka', tone: 'text-blue-800' },
   ],
   en: [
-    { accent: 'Print', rest: ' design', tone: 'text-violet-600' },
+    { accent: 'Print', rest: ' design', tone: 'text-blue-800' },
     { accent: 'Fast', rest: ' print', tone: 'text-blue-600' },
-    { accent: 'Digital', rest: ' printing', tone: 'text-violet-600' },
+    { accent: 'Digital', rest: ' printing', tone: 'text-blue-800' },
     { accent: 'Finishing', rest: ' services', tone: 'text-blue-600' },
-    { accent: 'Laser', rest: ' engraving', tone: 'text-violet-600' },
+    { accent: 'Laser', rest: ' engraving', tone: 'text-blue-800' },
   ],
 } as const
 

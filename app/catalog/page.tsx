@@ -1,10 +1,14 @@
-import { Suspense } from 'react'
-import { CatalogPage } from '@/features/catalog/CatalogPage'
+import { redirect } from 'next/navigation'
 
-export default function Page() {
-  return (
-    <Suspense fallback={null}>
-      <CatalogPage />
-    </Suspense>
-  )
+type Query = Record<string, string | string[] | undefined>
+
+export default async function Page({ searchParams }: { searchParams: Promise<Query> }) {
+  const params = await searchParams
+  const next = new URLSearchParams()
+  for (const key of ['category', 'q'] as const) {
+    const value = params[key]
+    if (typeof value === 'string' && value) next.set(key, value)
+  }
+  const suffix = next.toString()
+  redirect(suffix ? `/templates?${suffix}` : '/templates')
 }

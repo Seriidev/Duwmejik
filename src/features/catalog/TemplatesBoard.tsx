@@ -6,6 +6,7 @@ import logoBell from '@/assets/logo-bell.png'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { SearchBox } from '@/components/SearchBox'
 import { isPrintWork } from '@/data/catalog'
 import { LanguageMenu } from '@/components/LanguageMenu'
 import { PreviewModal } from '@/features/catalog/PreviewModal'
@@ -90,7 +91,15 @@ export function TemplatesBoard() {
   const likes = useEngagementStore((state) => state.likes)
   const addView = useEngagementStore((state) => state.addView)
   const toggleLike = useEngagementStore((state) => state.toggleLike)
-  const [menuOpen, setMenuOpen] = useState(true)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    const wide = window.matchMedia('(min-width: 1024px)')
+    const apply = () => setMenuOpen(wide.matches)
+    apply()
+    wide.addEventListener('change', apply)
+    return () => wide.removeEventListener('change', apply)
+  }, [])
   const [panel, setPanel] = useState<Panel>(isPanel(section) ? section : 'templates')
   const [chip, setChip] = useState<ChipId>('all')
   const [alike, setAlike] = useState<string | null>(null)
@@ -111,6 +120,49 @@ export function TemplatesBoard() {
   }, [])
 
   useEffect(() => {
+    const category = params.get('category')
+    const q = params.get('q')
+    if (!category && !q) return
+    setAlike(null)
+    setPicking(false)
+    if (q && !category) {
+      const lower = q.toLowerCase()
+      if (lower.includes('меню') || lower.includes('menu')) {
+        setChip('menu')
+        setQuery('')
+        setDraft('')
+        return
+      }
+      setChip('all')
+      setQuery(q)
+      setDraft(q)
+      return
+    }
+    if (!category) return
+    const known = chips.find((item) => item.id === category)
+    if (known && known.id !== 'all' && known.id !== 'popular') {
+      setChip(known.id)
+      setQuery('')
+      setDraft('')
+      return
+    }
+    setChip('all')
+    setAlike(category)
+    setQuery('')
+    setDraft('')
+  }, [params])
+
+  useEffect(() => {
+    const id = params.get('product')
+    if (!id) return
+    const product = products.find((item) => item.id === id)
+    if (!product) return
+    setPicked(product)
+    setPickedFrom(isPrintWork(product) ? 'gallery' : 'templates')
+    setPanel('orders')
+  }, [params, products])
+
+  useEffect(() => {
     if (pick !== 'gallery' && pick !== 'templates') return
     setPicking(true)
     setChip('all')
@@ -125,6 +177,26 @@ export function TemplatesBoard() {
     if (next === panel) return
     window.history.pushState({ panel: next }, '', panelUrl(next))
     setPanel(next)
+    if (window.innerWidth < 1024) setMenuOpen(false)
+  }
+
+  function applySearch(label: string, href?: string) {
+    const text = label.trim()
+    setDraft(text)
+    setQuery(text)
+    setAlike(null)
+    let nextChip: ChipId = 'all'
+    if (href) {
+      const url = new URL(href, 'http://local')
+      const category = url.searchParams.get('category')
+      const q = (url.searchParams.get('q') ?? '').toLowerCase()
+      if (category === 'cards' || category === 'flyers' || category === 'banners' || category === 'postcards' || category === 'stickers') {
+        nextChip = category
+      } else if (q.includes('меню') || q.includes('menu')) {
+        nextChip = 'menu'
+      }
+    }
+    setChip(nextChip)
   }
 
   function openForPick(next: 'gallery' | 'templates') {
@@ -193,10 +265,18 @@ export function TemplatesBoard() {
 
   return (
     <div className="flex min-h-svh bg-white text-slate-900">
+      {menuOpen && (
+        <button
+          type="button"
+          aria-label="Закрыть меню"
+          className="fixed inset-0 z-20 bg-slate-950/40 lg:hidden"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
       <div
         className={cn(
-          'sticky top-0 h-svh shrink-0 overflow-hidden transition-[width] duration-500 ease-in-out',
-          menuOpen ? 'w-[248px]' : 'w-0',
+          'z-30 h-svh shrink-0 overflow-hidden transition-[width] duration-500 ease-in-out lg:sticky lg:top-0',
+          menuOpen ? 'fixed inset-y-0 left-0 w-[248px] lg:static' : 'w-0',
         )}
       >
       <aside
@@ -261,20 +341,6 @@ export function TemplatesBoard() {
             type="button"
             onClick={() => {
               setPicking(false)
-              go('orders')
-            }}
-            className={cn(
-              'flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium',
-              panel === 'orders' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50',
-            )}
-          >
-            <ClipboardList className="size-5" />
-            Orders
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setPicking(false)
               go('qr')
             }}
             className={cn(
@@ -284,6 +350,20 @@ export function TemplatesBoard() {
           >
             <QrCode className="size-5 shrink-0" />
             QR code generate
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setPicking(false)
+              go('orders')
+            }}
+            className={cn(
+              'flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium',
+              panel === 'orders' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50',
+            )}
+          >
+            <ClipboardList className="size-5" />
+            Orders
           </button>
         </nav>
 
@@ -330,7 +410,7 @@ export function TemplatesBoard() {
           <QrGenerator />
         ) : (
         <>
-        <div className="sticky top-0 z-20 bg-white px-6 pb-4 pt-5">
+        <div className="sticky top-0 z-20 bg-white px-4 pb-4 pt-4 sm:px-6 sm:pt-5">
           {panel === 'notification' ? (
             <PanelHeader
               title="Notification"
@@ -344,13 +424,7 @@ export function TemplatesBoard() {
               bare
             />
           ) : (
-          <form
-            className="flex items-center gap-3"
-            onSubmit={(event) => {
-              event.preventDefault()
-              setQuery(draft)
-            }}
-          >
+          <div className="flex items-center gap-3">
             <button
               type="button"
               aria-label="Show menu"
@@ -362,15 +436,16 @@ export function TemplatesBoard() {
             >
               <PanelLeftOpen className="size-5" />
             </button>
-            <input
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder="Search: business card, flyers, banners, t-shirts..."
-              className="h-11 min-w-0 flex-1 rounded-full border border-slate-200 px-5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500"
-            />
-            <button type="submit" className="h-11 shrink-0 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
-              Search
-            </button>
+            <div className="min-w-0 flex-1">
+              <SearchBox
+                appearance="bar"
+                value={draft}
+                submitLabel="Search"
+                placeholder="Search: business card, flyers, banners, t-shirts..."
+                onSubmit={(value) => applySearch(value)}
+                onPick={(pick) => applySearch(pick.label, pick.href)}
+              />
+            </div>
             <button
               type="button"
               aria-label="Notification"
@@ -382,11 +457,11 @@ export function TemplatesBoard() {
             >
               <Bell className="size-5" />
             </button>
-          </form>
+          </div>
           )}
 
           {(panel === 'gallery' || panel === 'templates') && (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {chips.map((item) => (
                 <button
                   key={item.id}
@@ -396,7 +471,7 @@ export function TemplatesBoard() {
                     setChip(item.id)
                   }}
                   className={cn(
-                    'h-9 rounded-full px-4 text-sm font-medium',
+                    'h-9 shrink-0 rounded-full px-4 text-sm font-medium',
                     chip === item.id
                       ? 'bg-blue-600 text-white'
                       : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
@@ -417,7 +492,7 @@ export function TemplatesBoard() {
             {visible.length === 0 ? (
               <p className="px-6 py-16 text-center text-sm text-slate-500">Nothing found.</p>
             ) : (
-              <div className="grid grid-cols-2 gap-4 px-6 pb-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid grid-cols-2 gap-3 px-4 pb-6 sm:grid-cols-3 sm:gap-4 sm:px-6 lg:grid-cols-4 xl:grid-cols-5">
                 {visible.map((product) => {
                   const saved = Boolean(favorites?.includes(product.id))
                   const liked = Boolean(user && likes[user.id]?.includes(product.id))

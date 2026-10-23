@@ -11,7 +11,13 @@ const languages: { id: Locale; code: string; label: string }[] = [
   { id: 'tk', code: 'TK', label: 'Türkmençe' },
 ]
 
-export function LanguageMenu({ direction = 'down', trigger = 'pill' }: { direction?: 'up' | 'down'; trigger?: 'pill' | 'dots' }) {
+export function LanguageMenu({
+  direction = 'down',
+  trigger = 'pill',
+}: {
+  direction?: 'up' | 'down'
+  trigger?: 'pill' | 'dots' | 'plain'
+}) {
   const locale = useLocaleStore((state) => state.locale)
   const setLocale = useLocaleStore((state) => state.setLocale)
   const [open, setOpen] = useState(false)
@@ -59,12 +65,12 @@ export function LanguageMenu({ direction = 'down', trigger = 'pill' }: { directi
                 }}
                 className={cn(
                   'flex h-11 w-full items-center gap-3 px-4 text-left text-sm',
-                  active ? 'bg-blue-50 text-slate-900' : 'text-slate-700 hover:bg-slate-50',
+                  active ? 'bg-blue-100 text-slate-900' : 'text-slate-700 hover:bg-slate-50',
                 )}
               >
                 <span className="w-7 shrink-0 text-xs font-semibold tracking-wide text-slate-400">{item.code}</span>
                 <span className="min-w-0 flex-1 font-medium">{item.label}</span>
-                {active && <Check className="size-4 shrink-0 text-blue-600" />}
+                {active && <Check className="size-4 shrink-0 text-brand" />}
               </button>
             )
           })}
@@ -79,6 +85,16 @@ export function LanguageMenu({ direction = 'down', trigger = 'pill' }: { directi
           className="grid size-9 place-items-center rounded-xl text-slate-500 hover:bg-slate-100"
         >
           <MoreHorizontal className="size-5" />
+        </button>
+      ) : trigger === 'plain' ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+          className="inline-flex h-10 items-center gap-1 rounded-full px-2.5 text-sm font-semibold tracking-wide text-slate-500 hover:text-slate-900"
+        >
+          {current.code}
+          <ChevronDown className={cn('size-4 transition duration-200', open && 'rotate-180')} />
         </button>
       ) : (
         <button

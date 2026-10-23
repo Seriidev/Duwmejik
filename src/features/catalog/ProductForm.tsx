@@ -176,7 +176,7 @@ export function ProductForm({
               onClick={() => toggleColor(color.id)}
               className={cn(
                 'rounded-full border px-3 py-1.5 text-sm',
-                draft.colors.includes(color.id) ? 'border-violet-600 bg-violet-50 text-violet-800' : 'border-line',
+                draft.colors.includes(color.id) ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-line',
               )}
             >
               {color.id}

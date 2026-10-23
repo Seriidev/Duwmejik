@@ -110,7 +110,7 @@ export function AboutSection() {
           {page.points.map((point, index) => (
             <Reveal key={point.title} delay={index * 80}>
             <article className="flex items-center gap-4 rounded-[28px] bg-white px-5 py-4 shadow-[0_8px_24px_rgba(55,70,120,0.06)]">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-100 text-violet-600">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-100 text-blue-600">
                 <point.icon className="size-5" />
               </span>
               <div className="min-w-0">
