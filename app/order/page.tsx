@@ -1,5 +1,5 @@
-import { OrderWizardPage } from '@/features/orders/OrderWizardPage'
+import { redirect } from 'next/navigation'
 
 export default function Page() {
-  return <OrderWizardPage />
+  redirect('/templates?section=orders')
 }

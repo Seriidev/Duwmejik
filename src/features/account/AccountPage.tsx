@@ -8,6 +8,7 @@ import cardPreview from '@/assets/card-preview.jpg'
 import logoBell from '@/assets/logo-bell.png'
 import { Gate } from '@/components/Gate'
 import { Badge } from '@/components/ui/Badge'
+import { Modal } from '@/components/ui/Modal'
 import { buttonClass } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { isPrintWork } from '@/data/catalog'
@@ -71,6 +72,7 @@ export function AccountPage() {
   const logout = useAuthStore((state) => state.logout)
   const updateProfile = useAuthStore((state) => state.updateProfile)
   const changePassword = useAuthStore((state) => state.changePassword)
+  const setRole = useAuthStore((state) => state.setRole)
   const orders = useAccountStore((state) => state.orders)
   const favorites = useAccountStore((state) => state.favorites)
   const toggleFavorite = useAccountStore((state) => state.toggleFavorite)
@@ -96,7 +98,14 @@ export function AccountPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordNote, setPasswordNote] = useState('')
   const [passwordError, setPasswordError] = useState('')
+  const [designerOpen, setDesignerOpen] = useState(false)
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false)
   const preview = products.find((item) => item.id === previewId) ?? null
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('tab') === 'settings') setTab('settings')
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -252,7 +261,7 @@ export function AccountPage() {
           {mineOrders.length === 0 ? (
             <p className="py-16 text-center text-sm text-slate-500">
               Заказов пока нет.{' '}
-              <Link href="/order" className="font-medium text-blue-600">
+              <Link href="/templates?section=orders" className="font-medium text-blue-600">
                 Оформить заказ
               </Link>
             </p>
@@ -404,6 +413,30 @@ export function AccountPage() {
             </button>
           </form>
 
+          <div className="grid gap-3 border-t border-slate-200 pt-8">
+            <h2 className="text-lg font-semibold text-slate-950">Дизайнер</h2>
+            <p className="text-sm leading-6 text-slate-500">
+              Загружайте шаблоны и смотрите, какие работы на проверке, одобрены или отклонены.
+            </p>
+            {user.role === 'seller' || user.role === 'admin' ? (
+              <Link href="/seller" className="inline-flex h-11 w-fit items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
+                Открыть кабинет дизайнера
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setAcceptTerms(false)
+                  setAcceptPrivacy(false)
+                  setDesignerOpen(true)
+                }}
+                className="h-11 w-fit rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                Стать дизайнером
+              </button>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={logout}
@@ -413,6 +446,42 @@ export function AccountPage() {
           </button>
         </section>
       )}
+
+      <Modal
+        open={designerOpen}
+        title="Стать дизайнером"
+        onClose={() => setDesignerOpen(false)}
+      >
+        <div className="grid gap-4 text-sm leading-6 text-slate-600">
+          <p>Кабинет откроется после согласия с условиями и политикой конфиденциальности.</p>
+          <div className="grid gap-3 rounded-2xl bg-slate-50 p-4">
+            <p className="font-semibold text-slate-950">Условия для дизайнеров</p>
+            <p>Макет уходит на проверку. Одобренный появляется в каталоге, отклонённый остаётся у вас со статусом. Нельзя загружать чужие работы и скрывать лицензию.</p>
+            <p className="font-semibold text-slate-950">Политика конфиденциальности</p>
+            <p>Имя и почта используются для кабинета и сообщений о проверке. Их не отдают другим дизайнерам.</p>
+          </div>
+          <label className="flex items-start gap-3 text-slate-800">
+            <input type="checkbox" className="mt-1 size-4 accent-blue-600" checked={acceptTerms} onChange={(event) => setAcceptTerms(event.target.checked)} />
+            Принимаю условия для дизайнеров
+          </label>
+          <label className="flex items-start gap-3 text-slate-800">
+            <input type="checkbox" className="mt-1 size-4 accent-blue-600" checked={acceptPrivacy} onChange={(event) => setAcceptPrivacy(event.target.checked)} />
+            Принимаю политику конфиденциальности
+          </label>
+          <button
+            type="button"
+            disabled={!acceptTerms || !acceptPrivacy}
+            onClick={() => {
+              setRole(user.id, 'seller')
+              setDesignerOpen(false)
+              router.push('/seller')
+            }}
+            className="h-11 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            Перейти в кабинет
+          </button>
+        </div>
+      </Modal>
 
       <PreviewModal product={preview} onClose={() => setPreviewId(null)} />
       </div>
@@ -466,7 +535,18 @@ function OrderRow({
 }) {
   const service = SERVICES[order.service]?.title ?? order.service
   const tariff = TARIFFS[order.tariff]?.title ?? order.tariff
-  const brief = Object.entries(order.brief)
+  const briefLabels: Record<string, string> = {
+    source: 'Источник',
+    format: 'Формат',
+    paper: 'Бумага',
+    company: 'Компания',
+    deadline: 'Срок сдачи',
+  }
+  const briefValues: Record<string, string> = {
+    upload: 'Загруженный файл',
+    catalog: 'Каталог',
+  }
+  const brief = Object.entries(order.brief).filter(([, value]) => value.trim())
 
   return (
     <article className="border-b border-slate-200">
@@ -492,7 +572,7 @@ function OrderRow({
           <Detail label="Тариф" value={tariff} />
           <Detail label="Количество" value={`${order.quantity} шт.`} />
           <Detail label="Цена" value={formatPrice(order.price)} />
-          <Detail label="Срок" value={`около ${order.days} дней`} />
+          <Detail label="Срок" value={order.days === 0 ? 'в тот же день' : order.days === 1 ? '1 день' : order.days === 3 ? '2–3 дня' : `около ${order.days} дней`} />
           <Detail label="Имя" value={order.customerName} />
           <Detail label="Почта" value={order.email} />
           <Detail label="Телефон" value={order.phone || '—'} />
@@ -509,7 +589,7 @@ function OrderRow({
               <dd className="mt-1 grid gap-1">
                 {brief.map(([key, value]) => (
                   <p key={key} className="text-slate-800">
-                    {key}: {value}
+                    {briefLabels[key] ?? key}: {briefValues[value] ?? value}
                   </p>
                 ))}
               </dd>

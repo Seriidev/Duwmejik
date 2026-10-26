@@ -5,7 +5,7 @@ export function ViewTabs() {
   const t = useCopy()
   return (
     <div className="flex flex-wrap items-center justify-center gap-3">
-      <Link href="/order" className="order-glow inline-flex rounded-full px-9 py-3.5 text-base font-semibold text-white">
+      <Link href="/templates?section=orders" className="order-glow inline-flex rounded-full px-9 py-3.5 text-base font-semibold text-white">
         {t.order}
       </Link>
       <Link

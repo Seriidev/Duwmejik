@@ -275,13 +275,13 @@ export function TemplatesBoard() {
       )}
       <div
         className={cn(
-          'z-30 h-svh shrink-0 overflow-hidden transition-[width] duration-500 ease-in-out lg:sticky lg:top-0',
+          'z-30 h-svh shrink-0 overflow-hidden bg-white transition-[width] duration-500 ease-in-out lg:sticky lg:top-0',
           menuOpen ? 'fixed inset-y-0 left-0 w-[248px] lg:static' : 'w-0',
         )}
       >
       <aside
         className={cn(
-          'flex h-full w-[248px] flex-col border-r border-slate-100 px-4 py-5 transition-transform duration-500 ease-in-out',
+          'flex h-full w-[248px] flex-col border-r border-slate-100 bg-white px-4 py-5 transition-transform duration-500 ease-in-out',
           menuOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >

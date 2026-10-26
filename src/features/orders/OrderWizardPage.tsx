@@ -4,7 +4,6 @@ import { Check, CircleCheck, Copy, Download, Gift, Image as ImageIcon, LayoutGri
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 import QRCode from 'qrcode'
-import cardPreview from '@/assets/card-preview.jpg'
 import { SmoothSelect } from '@/components/ui/SmoothSelect'
 import { estimate, SERVICE_ORDER, SERVICES } from '@/features/orders/pricing'
 import { createId } from '@/lib/format'
@@ -15,6 +14,59 @@ import type { CustomOrder, Product, ServiceType } from '@/types'
 
 const FORMATS = ['90×50 or A4', '90×50', 'A6', 'A5', 'A4', 'A3']
 const PAPERS = ['Мелованная 300', 'Мелованная 170', 'Офсетная 80', 'Картон']
+
+const productCovers: Record<string, string> = {
+  'tpl-card-nord': '/products/nord.jpg',
+  'tpl-card-foil': '/products/foil.jpg',
+  'tpl-card-startup': '/products/startup.jpg',
+  'tpl-broch-cafe': '/products/broch-cafe.jpg',
+  'tpl-broch-arch': '/products/broch-arch.jpg',
+  'tpl-book-poetry': '/products/book-poetry.jpg',
+  'tpl-book-kids': '/products/book-kids.jpg',
+  'tpl-mug-morning': '/products/mug-morning.jpg',
+  'tpl-mug-corp': '/products/mug-corp.jpg',
+  'tpl-pen-logo': '/products/pen-logo.jpg',
+  'tpl-note-dots': '/products/note-dots.jpg',
+  'tpl-note-grid': '/products/note-grid.jpg',
+  'tpl-form-free': '/products/form-invoice.jpg',
+  'tpl-form-letter': '/products/form-letter.jpg',
+  'tpl-banner-expo': '/products/banner-expo.jpg',
+  'tpl-banner-social': '/products/banner-social.jpg',
+  'tpl-flyer-sale': '/products/flyer-sale.jpg',
+  'tpl-pack-box': '/products/pack-box.jpg',
+  'tpl-stickers': '/products/stickers.jpg',
+  'tpl-stickers-pack': '/products/stickers-pack.jpg',
+  'tpl-card-holiday': '/products/card-holiday.jpg',
+  'tpl-card-wedding': '/products/card-wedding.jpg',
+}
+
+const previews: Record<string, string> = {
+  'print:Визитки': '/categories/cards.jpg',
+  'print:Буклеты': '/categories/booklet.jpg',
+  'print:Листовки': '/categories/flyer.jpg',
+  'print:Бланки': '/products/form-letter.jpg',
+  'print:Книги': '/products/book-poetry.jpg',
+  'souvenir:Кружки': '/products/mug-morning.jpg',
+  'souvenir:Ручки': '/categories/pens.jpg',
+  'souvenir:Блокноты': '/categories/notebooks.jpg',
+  'graphic:Баннеры': '/categories/banner.png',
+  'graphic:Соцсети': '/products/banner-social.jpg',
+  'graphic:Упаковка': '/categories/packaging.png',
+  'graphic:Наклейки': '/categories/sticker.png',
+  'identity:Логотип': '/products/startup.jpg',
+  'identity:Фирменный стиль': '/about/type.jpg',
+  'identity:Брендбук': '/products/broch-arch.jpg',
+  'laser:Металл': '/categories/engraving.jpg',
+  'laser:Дерево': '/categories/engraving.jpg',
+  'laser:Стекло': '/categories/glasses.jpg',
+  'laser:Кожа': '/categories/engraving.jpg',
+}
+const deadlines = [
+  { id: 'usual', title: 'Обычный', text: '2–3 дня', days: 3 },
+  { id: 'fast', title: 'Срочно', text: '1 день', days: 1 },
+  { id: 'extra', title: 'Экстра срочно', text: 'в тот же день', days: 0 },
+] as const
+
 const control =
   'h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-800 outline-none'
 
@@ -71,11 +123,13 @@ export function OrderWizardPage({
   const [name, setName] = useState(user?.name ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
   const [phone, setPhone] = useState('')
+  const [deadline, setDeadline] = useState<(typeof deadlines)[number]['id']>('usual')
   const [error, setError] = useState('')
   const [created, setCreated] = useState<CustomOrder | null>(null)
   const [copied, setCopied] = useState(false)
   const [pickedTitle, setPickedTitle] = useState(selectedProduct?.title ?? '')
   const [pickedId, setPickedId] = useState(selectedProduct?.id ?? '')
+  const [pickedCover, setPickedCover] = useState(selectedProduct ? productCovers[selectedProduct.id] ?? '' : '')
   const [pickedFrom, setPickedFrom] = useState<'gallery' | 'templates' | null>(selectedFrom ?? null)
 
   function applyDesign(product: Product) {
@@ -93,6 +147,7 @@ export function OrderWizardPage({
     setPhone(user?.phone || phone)
     setPickedTitle(product.title)
     setPickedId(product.id)
+    setPickedCover(productCovers[product.id] ?? '')
     setError('')
   }
 
@@ -104,11 +159,23 @@ export function OrderWizardPage({
 
   const quote = estimate(service, 'standard', quantity)
 
+  function clearPicked() {
+    setPickedTitle('')
+    setPickedId('')
+    setPickedCover('')
+    setPickedFrom(null)
+  }
+
   function pickService(id: ServiceType) {
     setService(id)
     setSubtype(SERVICES[id].subtypes[0])
+    clearPicked()
     setError('')
   }
+
+  const due = deadlines.find((item) => item.id === deadline) ?? deadlines[0]
+  const previewSrc = (pickedId && productCovers[pickedId]) || previews[`${service}:${subtype}`] || '/categories/cards.jpg'
+  const previewLabel = pickedTitle || `${SERVICES[service].title} · ${subtype}`
 
   function submit() {
     if (!name.trim() || !/^\S+@\S+\.\S+$/.test(email)) {
@@ -122,7 +189,7 @@ export function OrderWizardPage({
       subtype,
       tariff: 'standard',
       price: quote.price,
-      days: quote.days,
+      days: due.days,
       status: 'new',
       customerName: name.trim(),
       email: email.trim(),
@@ -130,7 +197,7 @@ export function OrderWizardPage({
       comment: comment.trim(),
       quantity,
       references: files,
-      brief: { source: files.length ? 'upload' : 'catalog', format, paper, company: '' },
+      brief: { source: files.length ? 'upload' : 'catalog', format, paper, deadline: due.title },
       productId: pickedId || undefined,
       createdAt: new Date().toISOString(),
     }
@@ -153,160 +220,189 @@ export function OrderWizardPage({
 
   return (
     <Shell>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        {SERVICE_ORDER.map((id) => {
-          const active = service === id
-          const Icon = serviceIcons[id]
-          return (
-            <button
+      <div className="grid items-start gap-3 lg:grid-cols-[228px_minmax(0,1fr)]">
+        <div className="grid gap-1.5">
+          {SERVICE_ORDER.filter((id) => id !== 'laser').map((id) => (
+            <ServiceCard
               key={id}
-              type="button"
+              title={SERVICES[id].title}
+              subtitle={SERVICES[id].subtypes.slice(0, 2).join(', ')}
+              icon={serviceIcons[id]}
+              active={service === id && !pickedFrom}
               onClick={() => pickService(id)}
-              className={cn(
-                'relative rounded-2xl border px-3 py-4 text-left',
-                active ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white',
-              )}
-            >
-              {active && <Check className="absolute top-3 right-3 size-4 text-blue-600" />}
-              <Icon className={cn('size-5', active ? 'text-blue-600' : 'text-slate-700')} />
-              <span className="mt-3 block text-sm font-semibold text-slate-900">{SERVICES[id].title}</span>
-              <span className="mt-1 block text-xs leading-4 text-slate-400">{SERVICES[id].subtypes.slice(0, 2).join(', ')}</span>
-            </button>
-          )
-        })}
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-5">
-        <PickSource
-          title="Gallery"
-          subtitle="Готовые шаблоны"
-          icon={ImageIcon}
-          product={pickedFrom === 'gallery' ? pickedTitle : ''}
-          onClick={() => (onOpenGallery ? onOpenGallery() : router.push('/templates?pick=gallery'))}
-        />
-        <PickSource
-          title="Выбрать"
-          subtitle="Шаблоны дизайнеров"
-          icon={LayoutGrid}
-          product={pickedFrom === 'templates' ? pickedTitle : ''}
-          onClick={() => (onOpenTemplates ? onOpenTemplates() : router.push('/templates?pick=templates'))}
-        />
-      </div>
-
-      <div className="mt-6 grid gap-4">
-        <div className="grid gap-2 text-sm text-slate-600">
-          Изделие
-          <SmoothSelect value={subtype} options={SERVICES[service].subtypes} onChange={setSubtype} />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-2 text-sm text-slate-600">
-            Формат
-            <SmoothSelect value={format} options={FORMATS} onChange={setFormat} />
-          </div>
-          <div className="grid gap-2 text-sm text-slate-600">
-            Бумага
-            <SmoothSelect value={paper} options={PAPERS} onChange={setPaper} />
-          </div>
-        </div>
-        <label className="grid gap-2 text-sm text-slate-600">
-          Тираж, шт.
-          <input
-            className={control}
-            type="number"
-            min={1}
-            value={quantity}
-            onChange={(event) => setQuantity(Math.max(1, Number(event.target.value) || 1))}
+            />
+          ))}
+          <ServiceCard
+            title="Gallery"
+            subtitle={pickedFrom === 'gallery' && pickedTitle ? pickedTitle : 'Готовые шаблоны'}
+            icon={ImageIcon}
+            active={pickedFrom === 'gallery'}
+            onClick={() => (onOpenGallery ? onOpenGallery() : router.push('/templates?pick=gallery'))}
           />
-        </label>
-        <label className="grid gap-2 text-sm text-slate-600">
-          Имя
-          <input className={control} placeholder="Имя и фамилия" value={name} onChange={(event) => setName(event.target.value)} />
-        </label>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm text-slate-600">
-            Почта
-            <input className={control} type="email" placeholder="Почта" value={email} onChange={(event) => setEmail(event.target.value)} />
-          </label>
-          <label className="grid gap-2 text-sm text-slate-600">
-            Телефон
-            <input className={control} placeholder="+993" value={phone} onChange={(event) => setPhone(event.target.value)} />
-          </label>
+          <ServiceCard
+            title="Выбрать"
+            subtitle={pickedFrom === 'templates' && pickedTitle ? pickedTitle : 'Шаблоны дизайнеров'}
+            icon={LayoutGrid}
+            active={pickedFrom === 'templates'}
+            onClick={() => (onOpenTemplates ? onOpenTemplates() : router.push('/templates?pick=templates'))}
+          />
+          <ServiceCard
+            title={SERVICES.laser.title}
+            subtitle={SERVICES.laser.subtypes.slice(0, 2).join(', ')}
+            icon={serviceIcons.laser}
+            active={service === 'laser' && !pickedFrom}
+            onClick={() => pickService('laser')}
+          />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm text-slate-600">
-            Описание задачи
+
+        <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
+          <Field label="Изделие" className="lg:col-span-2 lg:col-start-1 lg:row-start-1">
+            <SmoothSelect
+              value={subtype}
+              options={SERVICES[service].subtypes}
+              onChange={(next) => {
+                setSubtype(next)
+                clearPicked()
+              }}
+            />
+          </Field>
+          <div className="relative h-48 overflow-hidden rounded-2xl lg:col-start-3 lg:row-start-1 lg:row-end-5 lg:h-auto lg:min-h-0">
+            <img src={previewSrc} alt={previewLabel} className="h-full w-full object-cover lg:absolute lg:inset-0" />
+          </div>
+          <Field label="Формат" className="lg:col-span-2 lg:col-start-1 lg:row-start-2">
+            <SmoothSelect value={format} options={FORMATS} onChange={setFormat} />
+          </Field>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:contents">
+          <Field label="Бумага" className="lg:col-start-1 lg:row-start-3">
+            <SmoothSelect value={paper} options={PAPERS} onChange={setPaper} />
+          </Field>
+          <Field label="Тираж, шт." className="lg:col-start-2 lg:row-start-3">
+            <input
+              className={control}
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(event) => setQuantity(Math.max(1, Number(event.target.value) || 1))}
+            />
+          </Field>
+          </div>
+          <Field label="Имя" className="lg:col-span-2 lg:col-start-1 lg:row-start-4">
+            <input className={control} value={name} onChange={(event) => setName(event.target.value)} />
+          </Field>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:contents">
+          <Field label="Почта" className="lg:col-start-1 lg:row-start-5">
+            <input className={control} type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+          </Field>
+          <Field label="Телефон" className="lg:col-start-2 lg:row-start-5">
+            <input className={control} placeholder="+993" value={phone} onChange={(event) => setPhone(event.target.value)} />
+          </Field>
+          </div>
+          <div className="grid gap-1.5 lg:col-span-2 lg:col-start-1 lg:row-start-6">
+            <p className="text-sm text-slate-500">Срок сдачи</p>
+            <div className="grid grid-cols-3 gap-2">
+              {deadlines.map((item) => {
+                const active = deadline === item.id
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setDeadline(item.id)}
+                    className={cn(
+                      'rounded-xl border px-2 py-2.5 text-left',
+                      active ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white',
+                    )}
+                  >
+                    <span className={cn('block text-sm font-semibold', active ? 'text-blue-700' : 'text-slate-900')}>{item.title}</span>
+                    <span className="mt-0.5 block text-xs text-slate-400">{item.text}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:contents">
+          <Field label="Описание задачи" className="lg:col-start-1 lg:row-start-7">
             <textarea
-              className="min-h-40 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none"
+              className="h-[152px] w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none"
               placeholder="Опишите макет, тираж и пожелания"
               value={comment}
               onChange={(event) => setComment(event.target.value)}
             />
-          </label>
-          <div className="grid gap-2 text-sm text-slate-600">
-            Загрузить макет
-            <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-6 text-center">
-              <span className="grid size-10 place-items-center rounded-full bg-slate-100 text-slate-500">
-                <Upload className="size-5" />
-              </span>
-              <span className="mt-3 text-sm font-medium text-slate-800">Загрузите свой макет</span>
-              <span className="mt-1 text-xs text-slate-400">JPG, PNG, PDF, PSD, AI</span>
-              {files.length > 0 && <span className="mt-2 text-xs text-slate-600">{files.join(', ')}</span>}
-              <input
-                type="file"
-                className="hidden"
-                multiple
-                accept=".jpg,.jpeg,.png,.pdf,.psd,.ai"
-                onChange={(event) => setFiles(Array.from(event.target.files ?? []).map((file) => file.name))}
-              />
-            </label>
+          </Field>
+          <div className="lg:col-start-2 lg:row-start-7">
+            <UploadBox files={files} onFiles={setFiles} />
+          </div>
+          </div>
+          <div className="flex flex-col items-end gap-2 lg:col-start-3 lg:row-start-5 lg:items-stretch">
+            {error && <p className="text-sm text-red-600 lg:text-right">{error}</p>}
+            <button type="button" onClick={submit} className="h-11 rounded-xl bg-brand px-5 text-sm font-semibold text-white lg:w-full">
+              Отправить заказ
+            </button>
           </div>
         </div>
-      </div>
-
-      {error && <p className="mt-4 text-right text-sm text-red-600">{error}</p>}
-      <div className="mt-6 flex items-center justify-end gap-4">
-        <button
-          type="button"
-          onClick={submit}
-          className="h-11 rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold tracking-wide text-slate-800"
-        >
-          Отправить
-        </button>
       </div>
     </Shell>
   )
 }
 
-function PickSource({
+function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
+  return (
+    <label className={cn('grid gap-1.5 text-sm text-slate-500', className)}>
+      {label}
+      {children}
+    </label>
+  )
+}
+
+function UploadBox({ files, onFiles }: { files: string[]; onFiles: (files: string[]) => void }) {
+  return (
+    <div className="grid gap-1.5 text-sm text-slate-500">
+      Загрузить макет
+      <label className="flex h-[152px] cursor-pointer flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-center">
+        <span className="grid size-10 place-items-center rounded-full bg-slate-100 text-slate-500">
+          <Upload className="size-5" />
+        </span>
+        <span className="mt-3 text-sm font-medium text-slate-800">Загрузите свой макет</span>
+        <span className="mt-1 text-xs text-slate-400">PNG, JPG или PDF · до 20 МБ</span>
+        {files.length > 0 && <span className="mt-2 text-xs text-slate-600">{files.join(', ')}</span>}
+        <input
+          type="file"
+          className="hidden"
+          accept=".jpg,.jpeg,.png,.pdf"
+          onChange={(event) => onFiles(Array.from(event.target.files ?? []).map((file) => file.name))}
+        />
+      </label>
+    </div>
+  )
+}
+
+function ServiceCard({
   title,
   subtitle,
   icon: Icon,
-  product,
+  active,
   onClick,
 }: {
   title: string
   subtitle: string
   icon: typeof ImageIcon
-  product: string
+  active: boolean
   onClick: () => void
 }) {
-  const chosen = Boolean(product)
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'relative rounded-2xl border px-3 py-4 text-left',
-        chosen ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white',
+        'relative flex items-start gap-3 rounded-2xl border px-3 py-2.5 text-left',
+        active ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white',
       )}
     >
-      {chosen && <Check className="absolute top-3 right-3 size-4 text-blue-600" />}
-      {chosen ? (
-        <img src={cardPreview.src} alt="" className="h-14 w-full rounded-xl object-cover" />
-      ) : (
-        <Icon className={cn('size-5', chosen ? 'text-blue-600' : 'text-slate-700')} />
-      )}
-      <span className="mt-3 block text-sm font-semibold text-slate-900">{title}</span>
-      <span className="mt-1 block truncate text-xs leading-4 text-slate-400">{chosen ? product : subtitle}</span>
+      <Icon className={cn('mt-0.5 size-5 shrink-0', active ? 'text-blue-600' : 'text-slate-700')} />
+      <span className="min-w-0 pr-5">
+        <span className="block text-sm font-semibold text-slate-900">{title}</span>
+        <span className="mt-0.5 block truncate text-xs text-slate-400">{subtitle}</span>
+      </span>
+      {active && <Check className="absolute top-3 right-3 size-4 text-blue-600" />}
     </button>
   )
 }
@@ -354,6 +450,7 @@ function SuccessCard({
       `Тираж: ${order.quantity} шт`,
       `Формат: ${order.brief.format ?? ''}`,
       `Бумага: ${order.brief.paper ?? ''}`,
+      `Срок: ${order.brief.deadline ?? ''}`,
       `Имя: ${order.customerName}`,
       `Компания: ${order.brief.company ?? ''}`,
       `Телефон: ${order.phone}`,

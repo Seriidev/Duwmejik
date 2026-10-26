@@ -251,7 +251,7 @@ const copy = {
         price: '20',
         unit: 'TMT',
         action: 'Выбрать',
-        href: '/order',
+        href: '/templates?section=orders',
         featured: false,
       },
       {
@@ -261,7 +261,7 @@ const copy = {
         price: '200',
         unit: 'TMT',
         action: 'Выбрать',
-        href: '/order',
+        href: '/templates?section=orders',
         featured: false,
       },
     ],
@@ -325,7 +325,7 @@ const copy = {
         price: '20',
         unit: 'TMT',
         action: 'Choose',
-        href: '/order',
+        href: '/templates?section=orders',
         featured: false,
       },
       {
@@ -335,7 +335,7 @@ const copy = {
         price: '200',
         unit: 'TMT',
         action: 'Choose',
-        href: '/order',
+        href: '/templates?section=orders',
         featured: false,
       },
     ],
@@ -399,7 +399,7 @@ const copy = {
         price: '20',
         unit: 'TMT',
         action: 'Saýla',
-        href: '/order',
+        href: '/templates?section=orders',
         featured: false,
       },
       {
@@ -409,7 +409,7 @@ const copy = {
         price: '200',
         unit: 'TMT',
         action: 'Saýla',
-        href: '/order',
+        href: '/templates?section=orders',
         featured: false,
       },
     ],
@@ -459,7 +459,7 @@ export function HomePage() {
               <Link href="/templates" className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-white">
                 {page.allTemplates}
               </Link>
-              <Link href="/order" className="inline-flex h-10 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold text-neutral-950">
+              <Link href="/templates?section=orders" className="inline-flex h-10 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold text-neutral-950">
                 {page.orderPrint}
               </Link>
             </div>
@@ -649,7 +649,7 @@ export function HomePage() {
                   </span>
                 ))}
               </div>
-              <Link href="/seller" className="mt-5 flex h-11 items-center justify-center rounded-xl bg-brand px-5 text-sm font-semibold text-white">
+              <Link href="/account?tab=settings" className="mt-5 flex h-11 items-center justify-center rounded-xl bg-brand px-5 text-sm font-semibold text-white">
                 {page.designerCta}
               </Link>
             </div>

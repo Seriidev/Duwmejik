@@ -8,17 +8,26 @@ import { Reveal } from '@/components/Reveal'
 import { cn } from '@/lib/cn'
 import { useLocaleStore } from '@/store/useLocaleStore'
 
-/** Temporary Ashgabat points. Swap lat/lon when the real office coordinates arrive. */
 const offices = [
-  { lat: 37.9601, lon: 58.3261 },
-  { lat: 37.9314, lon: 58.3812 },
+  {
+    lat: 37.913772,
+    lon: 58.382669,
+    address: {
+      ru: 'Дом 79, просп. Великого Сапармурата Туркменбаши 79, Aşgabat 744000, Turkmenistan',
+      en: '79 Saparmurat Turkmenbashi Ave, Ashgabat 744000, Turkmenistan',
+      tk: 'Saparmyrat Türkmenbaşy şaýoly, 79 jaý, Aşgabat 744000, Türkmenistan',
+    },
+  },
+  {
+    lat: 37.92862,
+    lon: 58.389627,
+    address: {
+      ru: 'ул. Галкыныш, Aşgabat 744005, Turkmenistan',
+      en: 'Galkynysh St, Ashgabat 744005, Turkmenistan',
+      tk: 'Galkynyş köçesi, Aşgabat 744005, Türkmenistan',
+    },
+  },
 ] as const
-
-const address = {
-  ru: 'Дом 79, просп. Великого Сапармурата Туркменбаши 79, Aşgabat 744000, Turkmenistan',
-  en: '79 Saparmurat Turkmenbashi Ave, Ashgabat 744000, Turkmenistan',
-  tk: 'Saparmyrat Türkmenbaşy şaýoly, 79 jaý, Aşgabat 744000, Türkmenistan',
-}
 
 const copy = {
   ru: {
@@ -105,7 +114,7 @@ export function Footer() {
               </div>
               <div>
                 <p className="text-xs font-semibold tracking-wide text-white/80 uppercase">{page.address}</p>
-                <p className="mt-1 max-w-sm leading-6 text-white/90">{address[locale]}</p>
+                <p className="mt-1 max-w-sm leading-6 text-white/90">{offices[0].address[locale]}</p>
               </div>
             </div>
           </div>
@@ -136,7 +145,7 @@ export function Footer() {
               </button>
             </div>
             <p className="mt-4 px-1 text-sm font-semibold">{page.office}</p>
-            <p className="mt-1 px-1 text-sm leading-6 text-slate-500">{address[locale]}</p>
+            <p className="mt-1 px-1 text-sm leading-6 text-slate-500">{offices[point].address[locale]}</p>
           </div>
         </div>
 

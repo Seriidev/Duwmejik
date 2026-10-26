@@ -92,7 +92,7 @@ export function ProductForm({
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
-          label="Цена, ₽"
+          label="Цена, TMT"
           type="number"
           min={0}
           value={draft.price}

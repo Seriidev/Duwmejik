@@ -265,7 +265,7 @@ export function PreviewModal({
                   Заказать
                 </button>
               ) : (
-                <Link href="/order" onClick={onClose} className="inline-flex h-12 flex-1 items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700">
+                <Link href={product ? `/templates?section=orders&product=${product.id}` : '/templates?section=orders'} onClick={onClose} className="inline-flex h-12 flex-1 items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700">
                   Заказать
                 </Link>
               )}

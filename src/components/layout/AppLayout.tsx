@@ -12,7 +12,7 @@ import { useHash } from '@/lib/useHash'
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const hash = useHash()
-  const dashboard = pathname.startsWith('/templates')
+  const dashboard = pathname.startsWith('/templates') || pathname.startsWith('/seller')
   const hostedQr = pathname === '/q'
   const profile = pathname === '/account'
   const bare = dashboard || hostedQr || profile

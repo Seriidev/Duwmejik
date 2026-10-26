@@ -49,7 +49,7 @@ export function CartPage() {
             <p className="text-sm text-muted">К оплате</p>
             <p className="mt-1 text-3xl font-semibold">{formatPrice(total)}</p>
             <p className="mt-2 text-sm text-muted">{items.length} поз.</p>
-            <Link href="/checkout" className={buttonClass('primary', 'md', 'mt-5 w-full')}>
+            <Link href="/templates?section=orders" className={buttonClass('primary', 'md', 'mt-5 w-full')}>
               {total === 0 ? 'Получить файлы' : 'Оформить'}
             </Link>
           </Card>
