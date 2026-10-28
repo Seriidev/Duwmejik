@@ -1,20 +1,26 @@
 'use client'
 
-import { BarChart3, Eye, Heart, LayoutGrid, PanelLeftClose, PanelLeftOpen, QrCode } from 'lucide-react'
-import logoBell from '@/assets/logo-bell.png'
+import { BarChart3, Bell, Eye, Heart, Images, LayoutGrid, PanelLeftOpen, QrCode, Upload, X } from 'lucide-react'
+import cardPreview from '@/assets/card-preview.jpg'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Gate } from '@/components/Gate'
-import { LanguageMenu } from '@/components/LanguageMenu'
+import { SideMenu } from '@/components/layout/SideMenu'
 import { buttonClass } from '@/components/ui/Button'
+import { Modal } from '@/components/ui/Modal'
 import { QrGenerator } from '@/features/catalog/QrGenerator'
+import { NoticeBoard } from '@/features/seller/NoticeBoard'
+import { UploadWork, type WorkSubmission } from '@/features/seller/UploadWork'
+import { WorksBoard } from '@/features/seller/WorksBoard'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useCatalogStore } from '@/store/useCatalogStore'
 import { likeCount, useEngagementStore } from '@/store/useEngagementStore'
+import { useNoticeStore } from '@/store/useNoticeStore'
+import { useThemeStore } from '@/store/useThemeStore'
 import type { Product, ProductStatus } from '@/types'
 
-type Panel = 'templates' | 'qr' | 'stats'
+type Panel = 'works' | 'upload' | 'templates' | 'qr' | 'stats' | 'inbox'
 
 const statusText: Record<ProductStatus, string> = {
   pending: 'На проверке',
@@ -25,10 +31,19 @@ const statusText: Record<ProductStatus, string> = {
 export function SellerPage() {
   const user = useAuthStore((state) => state.user)
   const products = useCatalogStore((state) => state.products)
+  const categories = useCatalogStore((state) => state.categories)
+  const addProduct = useCatalogStore((state) => state.addProduct)
+  const removeProduct = useCatalogStore((state) => state.removeProduct)
   const views = useEngagementStore((state) => state.views)
   const likes = useEngagementStore((state) => state.likes)
+  const theme = useThemeStore((state) => state.theme)
+  const notices = useNoticeStore((state) => state.items)
+  const markAllRead = useNoticeStore((state) => state.markAllRead)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [panel, setPanel] = useState<Panel>('stats')
+  const [panel, setPanel] = useState<Panel>('works')
+  const [uploadedAt, setUploadedAt] = useState<Record<string, string>>({})
+  const [incomingFile, setIncomingFile] = useState<File | null>(null)
+  const [notice, setNotice] = useState('')
 
   useEffect(() => {
     const wide = window.matchMedia('(min-width: 1024px)')
@@ -71,6 +86,8 @@ export function SellerPage() {
   }
 
   const mine = products.filter((item) => item.authorId === user.id)
+  const inbox = notices.filter((item) => item.userId === user.id)
+  const unread = inbox.filter((item) => !item.read).length
   const counts = {
     pending: mine.filter((item) => item.status === 'pending').length,
     published: mine.filter((item) => item.status === 'published').length,
@@ -85,81 +102,76 @@ export function SellerPage() {
     if (window.innerWidth < 1024) setMenuOpen(false)
   }
 
-  const title = panel === 'templates' ? 'Templates' : panel === 'qr' ? 'QR code generate' : 'Анализ работ'
+  function openInbox() {
+    markAllRead(user.id)
+    openPanel('inbox')
+  }
+
+  function openUpload(file?: File) {
+    if (file) setIncomingFile(file)
+    setNotice('')
+    openPanel('upload')
+  }
+
+  function submitWork(draft: WorkSubmission) {
+    const product = addProduct(
+      {
+        title: draft.title,
+        description: draft.description,
+        price: 0,
+        categoryId: draft.categoryId,
+        fileTypes: [draft.fileType],
+        colors: [],
+        style: 'minimal',
+        orientation: 'landscape',
+        license: 'personal',
+        tags: draft.tags,
+        image: draft.image,
+        gallery: draft.gallery,
+      },
+      { author: user.name, authorId: user.id, status: 'pending' },
+    )
+    setUploadedAt((current) => ({ ...current, [product.id]: new Date().toISOString() }))
+    setNotice('Работа отправлена на проверку')
+    setIncomingFile(null)
+    openPanel('works')
+  }
+
+  const title =
+    panel === 'works'
+      ? 'Мои работы'
+      : panel === 'upload'
+        ? 'Загрузить работу'
+        : panel === 'templates'
+          ? 'Templates'
+          : panel === 'qr'
+            ? 'QR code generate'
+            : panel === 'inbox'
+              ? 'Сообщения'
+              : 'Анализ работ'
 
   return (
-    <div className="flex min-h-svh bg-white text-slate-900">
-      {menuOpen && (
-        <button
-          type="button"
-          aria-label="Закрыть меню"
-          className="fixed inset-0 z-20 bg-slate-950/40 lg:hidden"
-          onClick={() => setMenuOpen(false)}
-        />
-      )}
+    <div className={cn('flex h-svh overflow-hidden text-slate-900 lg:gap-3 lg:p-3', theme === 'dark' ? 'bg-[#121212]' : 'bg-[#f3f3f4]')}>
+      <SideMenu
+        expanded={menuOpen}
+        onToggle={() => setMenuOpen((open) => !open)}
+        loginHref="/login?from=%2Fseller"
+        items={[
+          { id: 'templates', label: 'Templates', short: 'Templates', icon: LayoutGrid, active: panel === 'templates', onClick: () => openPanel('templates') },
+          { id: 'qr', label: 'QR code generate', short: 'QR', icon: QrCode, active: panel === 'qr', onClick: () => openPanel('qr') },
+          { id: 'stats', label: 'Анализ', short: 'Анализ', icon: BarChart3, active: panel === 'stats', separator: true, onClick: () => openPanel('stats') },
+          { id: 'works', label: 'Мои работы', short: 'Работы', icon: Images, active: panel === 'works', onClick: () => openPanel('works') },
+          { id: 'upload', label: 'Загрузить работу', short: 'Загрузить', icon: Upload, active: panel === 'upload', onClick: () => openUpload() },
+        ]}
+      />
+
       <div
         className={cn(
-          'z-30 h-svh shrink-0 overflow-hidden bg-white transition-[width] duration-500 ease-in-out lg:sticky lg:top-0',
-          menuOpen ? 'fixed inset-y-0 left-0 w-[248px] lg:static' : 'w-0',
+          'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:rounded-[28px]',
+          panel === 'works' || panel === 'inbox' || panel === 'templates' ? 'bg-[#f6f7fb]' : panel === 'qr' ? 'bg-[#f4f7fb]' : 'bg-white',
         )}
       >
-        <aside
-          className={cn(
-            'flex h-full w-[248px] flex-col border-r border-slate-100 bg-white px-4 py-5 transition-transform duration-500 ease-in-out',
-            menuOpen ? 'translate-x-0' : '-translate-x-full',
-          )}
-        >
-          <div className="flex items-center gap-1 px-2">
-            <Link href="/" className="flex min-w-0 flex-1 items-center gap-2.5">
-              <img src={logoBell.src} alt="" className="size-9 object-contain" />
-              <span className="truncate text-[17px] font-bold tracking-tight">Duwmejik</span>
-            </Link>
-            <button
-              type="button"
-              aria-label="Закрыть меню"
-              onClick={() => setMenuOpen(false)}
-              className="grid size-9 shrink-0 place-items-center rounded-xl text-slate-400 hover:bg-slate-100"
-            >
-              <PanelLeftClose className="size-5" />
-            </button>
-          </div>
-
-          <nav className="mt-8 grid gap-1">
-            <MenuButton icon={LayoutGrid} active={panel === 'templates'} onClick={() => openPanel('templates')}>
-              Templates
-            </MenuButton>
-            <MenuButton icon={QrCode} active={panel === 'qr'} onClick={() => openPanel('qr')}>
-              QR code generate
-            </MenuButton>
-            <div className="my-3 border-t border-slate-200" />
-            <MenuButton icon={BarChart3} active={panel === 'stats'} onClick={() => openPanel('stats')}>
-              Анализ
-            </MenuButton>
-          </nav>
-
-          <div className="mt-auto flex items-center gap-1 pt-4">
-            <Link href="/account" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-1 py-1.5 hover:bg-slate-50">
-              <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-blue-600 text-xs font-semibold text-white">
-                {user.avatar ? (
-                  <img src={user.avatar} alt="" className="size-full object-cover" />
-                ) : (
-                  user.name
-                    .split(' ')
-                    .slice(0, 2)
-                    .map((part) => part[0] ?? '')
-                    .join('')
-                    .toUpperCase()
-                )}
-              </span>
-              <span className="truncate text-sm font-medium text-slate-800">{user.name}</span>
-            </Link>
-            <LanguageMenu direction="up" trigger="dots" />
-          </div>
-        </aside>
-      </div>
-
-      <div className={cn('flex min-h-svh min-w-0 flex-1 flex-col', panel === 'qr' && 'bg-surface')}>
-        <div className="flex h-16 items-center gap-3 border-b border-slate-100 px-4 sm:px-6">
+        <div className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-100 bg-white px-4 sm:px-6 lg:rounded-t-[28px]">
           <button
             type="button"
             aria-label="Открыть меню"
@@ -171,23 +183,56 @@ export function SellerPage() {
           >
             <PanelLeftOpen className="size-5" />
           </button>
-          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+          {panel === 'upload' ? <div className="min-w-0 flex-1" /> : <h1 className="min-w-0 flex-1 text-xl font-semibold tracking-tight">{title}</h1>}
+          <button
+            type="button"
+            aria-label={unread > 0 ? `Сообщения, непрочитанных: ${unread}` : 'Сообщения'}
+            onClick={openInbox}
+            className={cn(
+              'relative grid size-11 shrink-0 place-items-center rounded-full border',
+              panel === 'inbox' ? 'border-blue-200 bg-blue-50 text-blue-600' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-800',
+            )}
+          >
+            <Bell className="size-5" />
+            {unread > 0 && (
+              <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[11px] font-semibold text-white">
+                {unread > 9 ? '9+' : unread}
+              </span>
+            )}
+          </button>
         </div>
 
-        {panel === 'qr' ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {panel === 'works' ? (
+          <WorksBoard
+            mine={mine}
+            views={views}
+            likes={likes}
+            categories={categories}
+            uploadedAt={uploadedAt}
+            notice={notice}
+            onOpenUpload={openUpload}
+            onRemove={removeProduct}
+          />
+        ) : panel === 'upload' ? (
+          <UploadWork
+            categories={categories}
+            initialFile={incomingFile}
+            onConsumeFile={() => setIncomingFile(null)}
+            onSubmit={submitWork}
+          />
+        ) : panel === 'inbox' ? (
+          <NoticeBoard userId={user.id} />
+        ) : panel === 'qr' ? (
           <QrGenerator />
         ) : panel === 'templates' ? (
-          <div className="px-4 sm:px-6">
-            <WorkList mine={mine} views={views} likes={likes} />
-          </div>
+          <TemplateCards products={products} />
         ) : (
           <section className="px-4 py-6 sm:px-6">
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
               <Stat label="На проверке" value={String(counts.pending)} />
               <Stat label="Одобрено" value={String(counts.published)} />
               <Stat label="Отклонено" value={String(counts.rejected)} />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <Stat label="Просмотры" value={String(totalViews)} />
               <Stat label="Лайки" value={String(totalLikes)} />
               <Stat label="Скачивания" value={String(totalDownloads)} />
@@ -195,43 +240,68 @@ export function SellerPage() {
             <WorkList mine={mine} views={views} likes={likes} />
           </section>
         )}
+        </div>
       </div>
     </div>
   )
 }
 
-function MenuButton({
-  icon: Icon,
-  active,
-  onClick,
-  children,
-}: {
-  icon: typeof LayoutGrid
-  active: boolean
-  onClick: () => void
-  children: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex h-11 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium',
-        active ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-50',
-      )}
-    >
-      <Icon className="size-5 shrink-0" />
-      {children}
-    </button>
-  )
-}
-
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 px-4 py-4">
+    <div className="rounded-2xl border border-slate-200 px-3 py-3 sm:px-4 sm:py-4">
       <p className="text-sm text-slate-500">{label}</p>
       <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
     </div>
+  )
+}
+
+function TemplateCards({ products }: { products: Product[] }) {
+  const [open, setOpen] = useState<Product | null>(null)
+  const published = products.filter((item) => item.status === 'published')
+  if (published.length === 0) {
+    return <p className="px-6 py-16 text-center text-sm text-slate-500">В каталоге пока нет шаблонов.</p>
+  }
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 px-4 py-6 sm:grid-cols-3 sm:gap-4 sm:px-6 lg:grid-cols-4 xl:grid-cols-5">
+        {published.map((product) => (
+          <button
+            key={product.id}
+            type="button"
+            onClick={() => setOpen(product)}
+            className="relative aspect-square overflow-hidden rounded-[22px] bg-[#6f7874]"
+          >
+            <img src={cardPreview.src} alt="" className="size-full object-cover" />
+          </button>
+        ))}
+      </div>
+      <Modal open={Boolean(open)} title={open?.title ?? 'Шаблон'} onClose={() => setOpen(null)} wide bare>
+        {open && (
+          <div className="grid items-start gap-5 lg:grid-cols-[1.15fr_0.9fr]">
+            <div className="overflow-hidden rounded-[22px] bg-slate-900">
+              <img src={cardPreview.src} alt="" className="aspect-square w-full object-cover" />
+            </div>
+            <div className="relative px-1 py-2 lg:px-3">
+              <button
+                type="button"
+                onClick={() => setOpen(null)}
+                className="absolute top-1 right-0 grid size-9 place-items-center rounded-full text-slate-500 hover:bg-slate-100"
+                aria-label="Закрыть окно"
+              >
+                <X className="size-5" />
+              </button>
+              <h3 className="pr-10 text-3xl font-semibold tracking-tight text-slate-950">{open.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-500">{open.description}</p>
+              <p className="mt-6 text-xs text-slate-400">Автор</p>
+              <Link href={`/designer/${open.authorId}`} className="mt-1 block text-sm font-medium text-slate-800 hover:text-blue-600">
+                {open.author}
+              </Link>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   )
 }
 

@@ -16,6 +16,7 @@ import { cn } from '@/lib/cn'
 import { useAccountStore } from '@/store/useAccountStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useCatalogStore } from '@/store/useCatalogStore'
+import { useNoticeStore, verdictMessage, type NoticeVerdict } from '@/store/useNoticeStore'
 import type { OrderStatus, Product, ProductStatus, Role } from '@/types'
 
 const tabs = ['Сводка', 'Товары', 'Категории', 'Заявки', 'Пользователи'] as const
@@ -30,6 +31,7 @@ export function AdminPage() {
   const updateProduct = useCatalogStore((state) => state.updateProduct)
   const removeProduct = useCatalogStore((state) => state.removeProduct)
   const setStatus = useCatalogStore((state) => state.setStatus)
+  const pushNotice = useNoticeStore((state) => state.push)
   const addCategory = useCatalogStore((state) => state.addCategory)
   const renameCategory = useCatalogStore((state) => state.renameCategory)
   const removeCategory = useCatalogStore((state) => state.removeCategory)
@@ -44,6 +46,27 @@ export function AdminPage() {
   const [categoryTitle, setCategoryTitle] = useState('')
   const [categoryColor, setCategoryColor] = useState('#dbeafe')
   const [categoryError, setCategoryError] = useState('')
+  const [decision, setDecision] = useState<{ product: Product; verdict: NoticeVerdict } | null>(null)
+  const [decisionText, setDecisionText] = useState('')
+
+  function openDecision(product: Product, verdict: NoticeVerdict) {
+    setDecision({ product, verdict })
+    setDecisionText(verdictMessage(product.title, verdict))
+  }
+
+  function sendDecision() {
+    if (!decision) return
+    const message = decisionText.trim() || verdictMessage(decision.product.title, decision.verdict)
+    setStatus(decision.product.id, decision.verdict === 'accepted' ? 'published' : 'rejected')
+    pushNotice({
+      userId: decision.product.authorId,
+      productId: decision.product.id,
+      title: decision.product.title,
+      verdict: decision.verdict,
+      message,
+    })
+    setDecision(null)
+  }
 
   if (!user || user.role !== 'admin') {
     return (
@@ -132,12 +155,12 @@ export function AdminPage() {
                     <td>
                       <div className="flex flex-wrap gap-2">
                         {product.status !== 'published' && (
-                          <Button size="sm" variant="secondary" onClick={() => setStatus(product.id, 'published')}>
+                          <Button size="sm" variant="secondary" onClick={() => openDecision(product, 'accepted')}>
                             Опубликовать
                           </Button>
                         )}
                         {product.status === 'pending' && (
-                          <Button size="sm" variant="ghost" onClick={() => setStatus(product.id, 'rejected')}>
+                          <Button size="sm" variant="ghost" onClick={() => openDecision(product, 'rejected')}>
                             Отклонить
                           </Button>
                         )}
@@ -278,10 +301,36 @@ export function AdminPage() {
             submitLabel="Сохранить"
             onSubmit={(draft) => {
               updateProduct(editing.id, { ...draft, status: editStatus })
+              if (editStatus !== editing.status && (editStatus === 'published' || editStatus === 'rejected')) {
+                const verdict: NoticeVerdict = editStatus === 'published' ? 'accepted' : 'rejected'
+                pushNotice({
+                  userId: editing.authorId,
+                  productId: editing.id,
+                  title: draft.title,
+                  verdict,
+                  message: verdictMessage(draft.title, verdict),
+                })
+              }
               setEditing(null)
             }}
           />
         )}
+      </Modal>
+      <Modal open={Boolean(decision)} title={decision?.verdict === 'rejected' ? 'Отклонить работу' : 'Принять работу'} onClose={() => setDecision(null)}>
+        <label className="grid gap-2 text-sm font-medium text-ink">
+          Сообщение дизайнеру
+          <textarea
+            value={decisionText}
+            onChange={(event) => setDecisionText(event.target.value)}
+            className="min-h-28 w-full resize-y rounded-2xl border border-line bg-card px-4 py-3 text-sm font-normal outline-none"
+          />
+        </label>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => setDecision(null)}>
+            Отмена
+          </Button>
+          <Button onClick={sendDecision}>{decision?.verdict === 'rejected' ? 'Отклонить' : 'Опубликовать'}</Button>
+        </div>
       </Modal>
       <Modal open={creating} title="Новый макет" onClose={() => setCreating(false)}>
         <ProductForm

@@ -10,7 +10,7 @@ import { Gate } from '@/components/Gate'
 import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
 import { buttonClass } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { Input, Select } from '@/components/ui/Input'
 import { isPrintWork } from '@/data/catalog'
 import { ORDER_STATUS_LABEL } from '@/data/labels'
 import { PreviewModal } from '@/features/catalog/PreviewModal'
@@ -24,6 +24,8 @@ import { likeCount, useEngagementStore } from '@/store/useEngagementStore'
 import type { CustomOrder } from '@/types'
 
 type Tab = 'orders' | 'saved' | 'settings'
+
+const regions = ['Ашхабад', 'Ахал', 'Мары', 'Лебап', 'Дашогуз', 'Балкан']
 
 const tabs: { id: Tab; label: string }[] = [
   { id: 'orders', label: 'История заказов' },
@@ -114,7 +116,7 @@ export function AccountPage() {
     setLast(parts.last)
     setEmail(user.email)
     setPhone(user.phone)
-    setCity(user.city)
+    setCity(regions.includes(user.city) ? user.city : '')
     setCompany(user.company)
     setAddress(user.address)
   }, [user?.id, user?.name, user?.email, user?.phone, user?.city, user?.company, user?.address])
@@ -360,7 +362,19 @@ export function AccountPage() {
             </div>
             <Input label="Почта" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
             <Input label="Телефон" value={phone} onChange={(event) => setPhone(event.target.value)} />
-            <Input label="Город" value={city} onChange={(event) => setCity(event.target.value)} />
+            <Select
+              label="Регион"
+              placeholder="Выберите регион"
+              value={regions.includes(city) ? city : ''}
+              onChange={(event) => setCity(event.target.value)}
+            >
+              {regions.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </Select>
+            <p className="text-sm text-slate-500">Компанию и адрес необязательно заполнять.</p>
             <Input label="Компания" value={company} onChange={(event) => setCompany(event.target.value)} />
             <Input label="Адрес" value={address} onChange={(event) => setAddress(event.target.value)} />
             {user.avatar && (
@@ -392,6 +406,7 @@ export function AccountPage() {
             <Input
               label="Новый пароль"
               type="password"
+              reveal
               autoComplete="new-password"
               required
               minLength={4}
@@ -401,6 +416,7 @@ export function AccountPage() {
             <Input
               label="Повторите новый пароль"
               type="password"
+              reveal
               autoComplete="new-password"
               required
               value={confirmPassword}

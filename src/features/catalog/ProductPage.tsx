@@ -112,7 +112,11 @@ export function ProductPage() {
           <PriceBadge price={product.price} />
           <h1 className="mt-3 text-4xl font-semibold tracking-tight">{product.title}</h1>
           <p className="mt-2 text-muted">
-            {product.author} · {product.downloads} скачиваний
+            <Link href={`/designer/${product.authorId}`} className="font-medium text-slate-800 hover:text-blue-600">
+              {product.author}
+            </Link>
+            {' · '}
+            {product.downloads} скачиваний
           </p>
           <p className="mt-2 inline-flex items-center gap-1 text-sm font-medium">
             <Star className="size-4 fill-amber-400 text-amber-400" />

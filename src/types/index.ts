@@ -10,6 +10,8 @@ export type LicenseId = 'personal' | 'commercial' | 'extended'
 
 export type ProductStatus = 'published' | 'pending' | 'rejected'
 
+export type SourceTool = 'illustrator' | 'corel' | 'photoshop'
+
 export type ServiceType = 'print' | 'souvenir' | 'graphic' | 'identity' | 'laser'
 
 export type TariffId = 'basic' | 'standard' | 'premium'
@@ -42,6 +44,9 @@ export interface Product {
   seed: number
   tags: string[]
   status: ProductStatus
+  image?: string
+  gallery?: string[]
+  source?: SourceTool
 }
 
 export interface ProductDraft {
@@ -55,6 +60,9 @@ export interface ProductDraft {
   orientation: Orientation
   license: LicenseId
   tags: string[]
+  image?: string
+  gallery?: string[]
+  source?: SourceTool
 }
 
 export interface SessionUser {

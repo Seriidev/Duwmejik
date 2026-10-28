@@ -17,6 +17,7 @@ export function SmoothSelect({
   disabled,
   className,
   ariaLabel,
+  placeholder,
 }: {
   value: string
   options: readonly (string | Option)[]
@@ -24,9 +25,10 @@ export function SmoothSelect({
   disabled?: boolean
   className?: string
   ariaLabel?: string
+  placeholder?: string
 }) {
   const items = normalize(options)
-  const selected = items.find((item) => item.value === value) ?? items[0]
+  const selected = items.find((item) => item.value === value)
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -58,7 +60,7 @@ export function SmoothSelect({
         className="flex h-11 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 text-left text-sm text-slate-800 disabled:opacity-60"
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="truncate">{selected?.label}</span>
+        <span className={cn('truncate', !selected && 'text-slate-400')}>{selected?.label ?? placeholder}</span>
         <ChevronDown className={cn('size-4 shrink-0 text-slate-400 transition duration-300', open && 'rotate-180')} />
       </button>
       <div

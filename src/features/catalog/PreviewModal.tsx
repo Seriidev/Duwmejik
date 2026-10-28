@@ -190,7 +190,9 @@ export function PreviewModal({
               </span>
               <div className="min-w-0">
                 <p className="text-xs text-slate-400">Автор</p>
-                <p className="truncate text-sm font-medium text-slate-800">{product.author}</p>
+                <Link href={`/designer/${product.authorId}`} onClick={onClose} className="block truncate text-sm font-medium text-slate-800 hover:text-blue-600">
+                  {product.author}
+                </Link>
               </div>
             </div>
           </div>

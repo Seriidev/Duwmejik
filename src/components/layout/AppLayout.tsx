@@ -14,7 +14,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const hash = useHash()
   const dashboard = pathname.startsWith('/templates') || pathname.startsWith('/seller')
   const hostedQr = pathname === '/q'
-  const profile = pathname === '/account'
+  const profile = pathname === '/account' || pathname.startsWith('/designer')
   const bare = dashboard || hostedQr || profile
 
   useEffect(() => {

@@ -185,7 +185,7 @@ export function QrGenerator() {
   const selected = types.find((type) => type.id === doc.kind)
 
   return (
-    <div className={cn('bg-[#f4f7fb] px-4 py-6 sm:px-6', step === 1 && 'flex flex-1 flex-col justify-center')}>
+    <div className="flex-1 bg-[#f4f7fb] px-4 py-6 sm:px-6">
       <Stepper
         step={step}
         onStep={(next) => {

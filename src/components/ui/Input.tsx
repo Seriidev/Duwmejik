@@ -1,6 +1,7 @@
 'use client'
 
-import { Children, isValidElement, type ChangeEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
+import { Children, isValidElement, useState, type ChangeEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { cn } from '@/lib/cn'
 import { SmoothSelect } from '@/components/ui/SmoothSelect'
 
@@ -10,12 +11,28 @@ const field =
 export function Input({
   label,
   className,
+  type,
+  reveal,
   ...props
-}: { label?: string } & InputHTMLAttributes<HTMLInputElement>) {
+}: { label?: string; reveal?: boolean } & InputHTMLAttributes<HTMLInputElement>) {
+  const [shown, setShown] = useState(false)
+  const inputType = reveal && type === 'password' && shown ? 'text' : type
   return (
     <label className="grid gap-1.5 text-sm">
       {label && <span className="font-medium text-ink">{label}</span>}
-      <input className={cn(field, 'h-11', className)} {...props} />
+      <span className="relative">
+        <input className={cn(field, 'h-11', reveal && 'pr-11', className)} type={inputType} {...props} />
+        {reveal && (
+          <button
+            type="button"
+            aria-label={shown ? 'Скрыть пароль' : 'Показать пароль'}
+            onClick={() => setShown((current) => !current)}
+            className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+          >
+            {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        )}
+      </span>
     </label>
   )
 }
@@ -39,8 +56,9 @@ export function Select({
   value,
   onChange,
   disabled,
+  placeholder,
   'aria-label': ariaLabel,
-}: { label?: string } & SelectHTMLAttributes<HTMLSelectElement>) {
+}: { label?: string; placeholder?: string } & SelectHTMLAttributes<HTMLSelectElement>) {
   const options = Children.toArray(children).flatMap((child) => {
     if (!isValidElement<{ value?: string; children?: ReactNode }>(child)) return []
     const optionValue = String(child.props.value ?? child.props.children ?? '')
@@ -54,6 +72,7 @@ export function Select({
         ariaLabel={ariaLabel}
         disabled={disabled}
         value={String(value ?? '')}
+        placeholder={placeholder}
         options={options}
         onChange={(next) => onChange?.({ target: { value: next } } as ChangeEvent<HTMLSelectElement>)}
       />

@@ -1,14 +1,12 @@
 'use client'
 
-import { Bell, Bookmark, ClipboardList, Eye, Heart, Image as ImageIcon, LayoutGrid, PanelLeftClose, PanelLeftOpen, QrCode } from 'lucide-react'
+import { Bell, Bookmark, ClipboardList, Eye, Heart, Image as ImageIcon, LayoutGrid, PanelLeftOpen, QrCode } from 'lucide-react'
 import cardPreview from '@/assets/card-preview.jpg'
-import logoBell from '@/assets/logo-bell.png'
-import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { SideMenu } from '@/components/layout/SideMenu'
 import { SearchBox } from '@/components/SearchBox'
 import { isPrintWork } from '@/data/catalog'
-import { LanguageMenu } from '@/components/LanguageMenu'
 import { PreviewModal } from '@/features/catalog/PreviewModal'
 import { OrderWizardPage } from '@/features/orders/OrderWizardPage'
 import { QrGenerator } from '@/features/catalog/QrGenerator'
@@ -17,6 +15,7 @@ import { useAccountStore } from '@/store/useAccountStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useCatalogStore } from '@/store/useCatalogStore'
 import { likeCount, useEngagementStore } from '@/store/useEngagementStore'
+import { useThemeStore } from '@/store/useThemeStore'
 import type { Product } from '@/types'
 
 const chips = [
@@ -91,6 +90,7 @@ export function TemplatesBoard() {
   const likes = useEngagementStore((state) => state.likes)
   const addView = useEngagementStore((state) => state.addView)
   const toggleLike = useEngagementStore((state) => state.toggleLike)
+  const theme = useThemeStore((state) => state.theme)
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
@@ -174,9 +174,10 @@ export function TemplatesBoard() {
   }, [pick])
 
   function go(next: Panel) {
-    if (next === panel) return
-    window.history.pushState({ panel: next }, '', panelUrl(next))
-    setPanel(next)
+    if (next !== panel) {
+      window.history.pushState({ panel: next }, '', panelUrl(next))
+      setPanel(next)
+    }
     if (window.innerWidth < 1024) setMenuOpen(false)
   }
 
@@ -264,134 +265,68 @@ export function TemplatesBoard() {
   const preview = published.find((item) => item.id === previewId) ?? null
 
   return (
-    <div className="flex min-h-svh bg-white text-slate-900">
-      {menuOpen && (
-        <button
-          type="button"
-          aria-label="Закрыть меню"
-          className="fixed inset-0 z-20 bg-slate-950/40 lg:hidden"
-          onClick={() => setMenuOpen(false)}
-        />
-      )}
-      <div
-        className={cn(
-          'z-30 h-svh shrink-0 overflow-hidden bg-white transition-[width] duration-500 ease-in-out lg:sticky lg:top-0',
-          menuOpen ? 'fixed inset-y-0 left-0 w-[248px] lg:static' : 'w-0',
-        )}
-      >
-      <aside
-        className={cn(
-          'flex h-full w-[248px] flex-col border-r border-slate-100 bg-white px-4 py-5 transition-transform duration-500 ease-in-out',
-          menuOpen ? 'translate-x-0' : '-translate-x-full',
-        )}
-      >
-        <div className="flex items-center gap-1 px-2">
-          <Link href="/" className="flex min-w-0 flex-1 items-center gap-2.5">
-            <img src={logoBell.src} alt="" className="size-9 object-contain" />
-            <span className="truncate text-[17px] font-bold tracking-tight">Duwmejik</span>
-          </Link>
-          <button
-            type="button"
-            aria-label="Collapse menu"
-            onClick={() => setMenuOpen(false)}
-            className="grid size-9 shrink-0 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-          >
-            <PanelLeftClose className="size-5" />
-          </button>
-        </div>
-
-        <nav className="mt-8 grid gap-1">
-          <button
-            type="button"
-            onClick={() => {
+    <div className={cn('flex h-svh overflow-hidden text-slate-900 lg:gap-3 lg:p-3', theme === 'dark' ? 'bg-[#121212]' : 'bg-[#f3f3f4]')}>
+      <SideMenu
+        expanded={menuOpen}
+        onToggle={() => setMenuOpen((open) => !open)}
+        loginHref="/login?from=%2Ftemplates"
+        items={[
+          {
+            id: 'gallery',
+            label: 'Our Gallery',
+            short: 'Gallery',
+            icon: ImageIcon,
+            active: panel === 'gallery',
+            onClick: () => {
               setPicking(false)
               go('gallery')
               setChip('all')
               setAlike(null)
               setQuery('')
               setDraft('')
-            }}
-            className={cn(
-              'flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium',
-              panel === 'gallery' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50',
-            )}
-          >
-            <ImageIcon className="size-5" />
-            Our Gallery
-          </button>
-          <button
-            type="button"
-            onClick={() => {
+            },
+          },
+          {
+            id: 'templates',
+            label: 'Templates',
+            short: 'Templates',
+            icon: LayoutGrid,
+            active: panel === 'templates',
+            onClick: () => {
               setPicking(false)
               go('templates')
               setChip('all')
               setAlike(null)
               setQuery('')
               setDraft('')
-            }}
-            className={cn(
-              'flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium',
-              panel === 'templates' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50',
-            )}
-          >
-            <LayoutGrid className="size-5" />
-            Templates
-          </button>
-          <button
-            type="button"
-            onClick={() => {
+            },
+          },
+          {
+            id: 'qr',
+            label: 'QR code generate',
+            short: 'QR',
+            icon: QrCode,
+            active: panel === 'qr',
+            onClick: () => {
               setPicking(false)
               go('qr')
-            }}
-            className={cn(
-              'flex h-11 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium',
-              panel === 'qr' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50',
-            )}
-          >
-            <QrCode className="size-5 shrink-0" />
-            QR code generate
-          </button>
-          <button
-            type="button"
-            onClick={() => {
+            },
+          },
+          {
+            id: 'orders',
+            label: 'Orders',
+            short: 'Orders',
+            icon: ClipboardList,
+            active: panel === 'orders',
+            onClick: () => {
               setPicking(false)
               go('orders')
-            }}
-            className={cn(
-              'flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium',
-              panel === 'orders' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50',
-            )}
-          >
-            <ClipboardList className="size-5" />
-            Orders
-          </button>
-        </nav>
+            },
+          },
+        ]}
+      />
 
-        <div className="mt-auto flex items-center gap-1 pt-4">
-          <Link
-            href={user ? '/account' : '/login?from=%2Ftemplates'}
-            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-1 py-1.5 hover:bg-slate-50"
-          >
-            <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-blue-600 text-xs font-semibold text-white">
-              {user?.avatar ? (
-                <img src={user.avatar} alt="" className="size-full object-cover" />
-              ) : (
-                (user?.name ?? 'L')
-                  .split(' ')
-                  .slice(0, 2)
-                  .map((part) => part[0] ?? '')
-                  .join('')
-                  .toUpperCase()
-              )}
-            </span>
-            <span className="truncate text-sm font-medium text-slate-800">{user?.name ?? 'Log in'}</span>
-          </Link>
-          <LanguageMenu direction="up" trigger="dots" />
-        </div>
-      </aside>
-      </div>
-
-      <div className={cn('flex min-h-svh min-w-0 flex-1 flex-col', panel === 'qr' && 'bg-surface')}>
+      <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:rounded-[28px]', panel === 'qr' ? 'bg-[#f4f7fb]' : 'bg-white')}>
         {panel === 'orders' && (
           <PanelHeader title="Способ заказа" menuOpen={menuOpen} onShowMenu={() => setMenuOpen(true)} onBell={() => { setPicking(false); go('notification') }} />
         )}
@@ -399,6 +334,7 @@ export function TemplatesBoard() {
           <PanelHeader title="QR code generate" menuOpen={menuOpen} onShowMenu={() => setMenuOpen(true)} onBell={() => { setPicking(false); go('notification') }} />
         )}
         {panel === 'orders' ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">
           <OrderWizardPage
             selectedProduct={picked}
             selectedFrom={pickedFrom}
@@ -406,11 +342,14 @@ export function TemplatesBoard() {
             onOpenTemplates={() => openForPick('templates')}
             onFinished={() => go('templates')}
           />
+          </div>
         ) : panel === 'qr' ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <QrGenerator />
+          </div>
         ) : (
         <>
-        <div className="sticky top-0 z-20 bg-white px-4 pb-4 pt-4 sm:px-6 sm:pt-5">
+        <div className="shrink-0 bg-white px-4 pb-4 pt-4 sm:px-6 sm:pt-5 lg:rounded-t-[28px]">
           {panel === 'notification' ? (
             <PanelHeader
               title="Notification"
@@ -430,7 +369,7 @@ export function TemplatesBoard() {
               aria-label="Show menu"
               onClick={() => setMenuOpen(true)}
               className={cn(
-                'grid h-11 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 text-slate-500 transition-all duration-500 ease-in-out hover:bg-slate-100',
+                'grid h-11 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 text-slate-500 transition-all duration-500 ease-in-out hover:bg-slate-100 lg:hidden',
                 menuOpen ? 'pointer-events-none -mr-3 w-0 min-w-0 border-0 px-0 opacity-0' : 'w-11 bg-white opacity-100',
               )}
             >
@@ -483,7 +422,7 @@ export function TemplatesBoard() {
             </div>
           )}
         </div>
-
+        <div className="min-h-0 flex-1 overflow-y-auto">
         {panel === 'gallery' || panel === 'templates' ? (
           <>
             {picking && (
@@ -563,6 +502,7 @@ export function TemplatesBoard() {
             </div>
           </div>
         )}
+        </div>
         </>
         )}
       </div>
@@ -605,7 +545,7 @@ function PanelHeader({
         aria-label="Show menu"
         onClick={onShowMenu}
         className={cn(
-          'grid h-11 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 text-slate-500 transition-all duration-500 ease-in-out hover:bg-slate-100',
+          'grid h-11 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 text-slate-500 transition-all duration-500 ease-in-out hover:bg-slate-100 lg:hidden',
           menuOpen ? 'pointer-events-none -mr-3 w-0 min-w-0 border-0 px-0 opacity-0' : 'w-11 bg-white opacity-100',
         )}
       >
@@ -626,7 +566,7 @@ function PanelHeader({
     </div>
   )
   if (bare) return row
-  return <div className="sticky top-0 z-20 bg-white px-6 pb-4 pt-5">{row}</div>
+  return <div className="shrink-0 border-b border-slate-100 bg-white px-6 pb-4 pt-5 lg:rounded-t-[28px]">{row}</div>
 }
 
 function SimilarIcon() {

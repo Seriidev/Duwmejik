@@ -14,9 +14,11 @@ const languages: { id: Locale; code: string; label: string }[] = [
 export function LanguageMenu({
   direction = 'down',
   trigger = 'pill',
+  triggerClassName,
 }: {
   direction?: 'up' | 'down'
   trigger?: 'pill' | 'dots' | 'plain'
+  triggerClassName?: string
 }) {
   const locale = useLocaleStore((state) => state.locale)
   const setLocale = useLocaleStore((state) => state.setLocale)
@@ -82,7 +84,7 @@ export function LanguageMenu({
           aria-label="Language"
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
-          className="grid size-9 place-items-center rounded-xl text-slate-500 hover:bg-slate-100"
+          className={cn('grid size-9 place-items-center rounded-xl text-slate-500 hover:bg-slate-100', triggerClassName)}
         >
           <MoreHorizontal className="size-5" />
         </button>

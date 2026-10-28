@@ -251,7 +251,7 @@ const copy = {
         price: '20',
         unit: 'TMT',
         action: 'Выбрать',
-        href: '/templates?section=orders',
+        href: '/templates?section=qr',
         featured: false,
       },
       {
@@ -261,7 +261,7 @@ const copy = {
         price: '200',
         unit: 'TMT',
         action: 'Выбрать',
-        href: '/templates?section=orders',
+        href: '/templates?section=qr',
         featured: false,
       },
     ],
@@ -325,7 +325,7 @@ const copy = {
         price: '20',
         unit: 'TMT',
         action: 'Choose',
-        href: '/templates?section=orders',
+        href: '/templates?section=qr',
         featured: false,
       },
       {
@@ -335,7 +335,7 @@ const copy = {
         price: '200',
         unit: 'TMT',
         action: 'Choose',
-        href: '/templates?section=orders',
+        href: '/templates?section=qr',
         featured: false,
       },
     ],
@@ -399,7 +399,7 @@ const copy = {
         price: '20',
         unit: 'TMT',
         action: 'Saýla',
-        href: '/templates?section=orders',
+        href: '/templates?section=qr',
         featured: false,
       },
       {
@@ -409,7 +409,7 @@ const copy = {
         price: '200',
         unit: 'TMT',
         action: 'Saýla',
-        href: '/templates?section=orders',
+        href: '/templates?section=qr',
         featured: false,
       },
     ],
@@ -682,8 +682,9 @@ export function HomePage() {
           <h2 className="text-center text-2xl font-semibold tracking-tight text-slate-950">{page.tariffsTitle}</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {page.plans.map((plan) => (
-              <article
+              <Link
                 key={plan.n}
+                href={plan.href}
                 className={cn(
                   'group flex min-h-[280px] flex-col rounded-[24px] p-5 shadow-[0_10px_30px_rgba(20,24,40,0.04)] transition-colors duration-300 hover:bg-brand hover:text-white',
                   plan.featured ? 'bg-brand text-white' : 'bg-white text-slate-950',
@@ -696,16 +697,15 @@ export function HomePage() {
                   <span className={cn('mb-1 text-sm font-semibold', plan.featured ? 'text-white/75' : 'text-slate-400 group-hover:text-white/75')}>{plan.unit}</span>
                 </p>
                 <p className={cn('mt-3 text-sm leading-6', plan.featured ? 'text-white/80' : 'text-slate-500 group-hover:text-white/80')}>{plan.text}</p>
-                <Link
-                  href={plan.href}
+                <span
                   className={cn(
                     'mt-auto inline-flex h-10 w-fit items-center rounded-full px-4 text-sm font-semibold transition-colors duration-300',
                     plan.featured ? 'bg-white text-slate-950' : 'bg-neutral-950 text-white group-hover:bg-white group-hover:text-slate-950',
                   )}
                 >
                   {plan.action}
-                </Link>
-              </article>
+                </span>
+              </Link>
             ))}
           </div>
         </div>
