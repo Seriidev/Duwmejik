@@ -103,6 +103,7 @@ export function SellerPage() {
   }
 
   function openInbox() {
+    if (!user) return
     markAllRead(user.id)
     openPanel('inbox')
   }
@@ -114,6 +115,7 @@ export function SellerPage() {
   }
 
   function submitWork(draft: WorkSubmission) {
+    if (!user) return
     const product = addProduct(
       {
         title: draft.title,
