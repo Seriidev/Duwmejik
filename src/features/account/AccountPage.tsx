@@ -176,6 +176,7 @@ export function AccountPage() {
 
   function saveProfile(event: FormEvent) {
     event.preventDefault()
+    if (!user) return
     setProfileNote('')
     const designer = user.role === 'seller' || user.role === 'admin'
     const message = updateProfile({
