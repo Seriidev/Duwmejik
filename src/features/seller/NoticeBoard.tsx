@@ -9,13 +9,12 @@ export function NoticeBoard({ userId }: { userId: string }) {
 
   return (
     <div className="bg-[#f6f7fb] px-4 py-6 sm:px-6">
-      <p className="max-w-xl text-sm text-slate-500">Здесь появляются ответы администратора: работу приняли в каталог или вернули на доработку.</p>
       {mine.length === 0 ? (
-        <p className="mt-8 rounded-[22px] bg-white px-5 py-16 text-center text-sm text-slate-500 shadow-[0_8px_30px_rgba(20,24,40,0.04)]">
-          Пока нет сообщений. Они появятся, когда администратор проверит работу.
+        <p className="rounded-[22px] bg-white px-5 py-16 text-center text-sm text-slate-500 shadow-[0_8px_30px_rgba(20,24,40,0.04)]">
+          Пока у вас нет сообщений.
         </p>
       ) : (
-        <ul className="mt-5 grid gap-3">
+        <ul className="grid gap-3">
           {mine.map((item) => (
             <NoticeCard key={item.id} item={item} />
           ))}

@@ -1,9 +1,10 @@
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { cn } from '@/lib/cn'
+import { useAuthStore } from '@/store/useAuthStore'
 import { useCatalogStore } from '@/store/useCatalogStore'
 import { useLocaleStore, type Locale } from '@/store/useLocaleStore'
 
@@ -36,10 +37,10 @@ const ideas: Pick[] = [
   { href: '/product/tpl-pack-box', image: '/products/pack-box.jpg', ru: 'Коробка продукта', en: 'Product box', tk: 'Önüm gutusy' },
 ]
 
-const headings: Record<Locale, { recent: string; quick: string; ideas: string }> = {
-  ru: { recent: 'Недавние запросы', quick: 'Быстрый поиск', ideas: 'Идеи для вас' },
-  en: { recent: 'Recent searches', quick: 'Quick search', ideas: 'Ideas for you' },
-  tk: { recent: 'Soňky gözlegler', quick: 'Çalt gözleg', ideas: 'Size üçin pikirler' },
+const headings: Record<Locale, { recent: string; quick: string; ideas: string; designers: string }> = {
+  ru: { recent: 'Недавние запросы', quick: 'Быстрый поиск', ideas: 'Идеи для вас', designers: 'Дизайнеры' },
+  en: { recent: 'Recent searches', quick: 'Quick search', ideas: 'Ideas for you', designers: 'Designers' },
+  tk: { recent: 'Soňky gözlegler', quick: 'Çalt gözleg', ideas: 'Size üçin pikirler', designers: 'Dizaýnerler' },
 }
 
 const categoryImage: Record<string, string> = {
@@ -66,17 +67,31 @@ function readRecent(): Recent[] {
   }
 }
 
-function saveRecent(item: Recent) {
+function writeRecent(items: Recent[]) {
   try {
-    const next = [item, ...readRecent().filter((entry) => entry.label !== item.label)].slice(0, 4)
-    localStorage.setItem(recentKey, JSON.stringify(next))
+    localStorage.setItem(recentKey, JSON.stringify(items.slice(0, 4)))
   } catch {
     /* ignore private-mode storage */
   }
 }
 
+function saveRecent(item: Recent) {
+  writeRecent([item, ...readRecent().filter((entry) => entry.label !== item.label)])
+}
+
 function matches(label: string, query: string) {
   return label.toLowerCase().includes(query)
+}
+
+function findDesignerId(
+  value: string,
+  accounts: { id: string; role: string }[],
+  products: { status: string; authorId: string }[],
+) {
+  const query = value.trim().toLowerCase()
+  const account = accounts.find((item) => (item.role === 'seller' || item.role === 'admin') && item.id.toLowerCase() === query)
+  if (account) return account.id
+  return products.find((item) => item.status === 'published' && item.authorId.toLowerCase() === query)?.authorId
 }
 
 export function SearchBox({
@@ -102,6 +117,7 @@ export function SearchBox({
   const locale = useLocaleStore((state) => state.locale)
   const products = useCatalogStore((state) => state.products)
   const categories = useCatalogStore((state) => state.categories)
+  const accounts = useAuthStore((state) => state.users)
   const external = value ?? ''
   const [tracked, setTracked] = useState(external)
   const [text, setText] = useState(external)
@@ -157,6 +173,29 @@ export function SearchBox({
     () => ideas.filter((item) => !query || matches(item[locale], query)),
     [query, locale],
   )
+  const shownDesigners = useMemo(() => {
+    if (!query) return []
+    const people = new Map<string, { id: string; name: string; image: string }>()
+    for (const account of accounts) {
+      if (account.role !== 'seller' && account.role !== 'admin') continue
+      people.set(account.id, { id: account.id, name: account.name, image: account.avatar || '/categories/cards.jpg' })
+    }
+    for (const product of products) {
+      if (product.status !== 'published' || people.has(product.authorId)) continue
+      people.set(product.authorId, {
+        id: product.authorId,
+        name: product.author,
+        image: product.image || '/categories/cards.jpg',
+      })
+    }
+    return [...people.values()]
+      .filter((person) => {
+        const id = person.id.toLowerCase()
+        const name = person.name.toLowerCase()
+        return id === query || id.includes(query) || name.includes(query)
+      })
+      .slice(0, 4)
+  }, [query, accounts, products])
   const shownProducts = useMemo(() => {
     if (!query) return []
     return products
@@ -173,6 +212,10 @@ export function SearchBox({
     setRecent(readRecent())
     setText(label)
     setOpen(false)
+    if (href.startsWith('/designer/')) {
+      router.push(href)
+      return
+    }
     if (onPick) onPick({ href, label })
     else router.push(href)
   }
@@ -183,6 +226,11 @@ export function SearchBox({
     if (!clean) {
       if (onSubmit) onSubmit('')
       else router.push('/templates')
+      return
+    }
+    const designerId = findDesignerId(clean, accounts, products)
+    if (designerId && !onSubmit) {
+      router.push(`/designer/${designerId}`)
       return
     }
     const hit = quickPicks.find((item) => item[locale].toLowerCase() === clean.toLowerCase())
@@ -204,7 +252,28 @@ export function SearchBox({
             className="fixed z-50 max-h-[min(560px,70vh)] overflow-y-auto rounded-[28px] bg-white p-4 text-left shadow-[0_18px_60px_rgba(20,24,40,0.18)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           >
             {recent.length > 0 && !query && (
-              <PickGrid title={title.recent} items={recent.map((item) => ({ ...item, name: item.label }))} onPick={go} />
+              <PickGrid
+                title={title.recent}
+                items={recent.map((item) => ({ ...item, name: item.label }))}
+                onPick={go}
+                onRemove={(name) => {
+                  const next = readRecent().filter((entry) => entry.label !== name)
+                  writeRecent(next)
+                  setRecent(next)
+                }}
+                removeLabel={locale === 'en' ? 'Remove from history' : locale === 'tk' ? 'Taryhdan aýyr' : 'Удалить из истории'}
+              />
+            )}
+            {shownDesigners.length > 0 && (
+              <PickGrid
+                title={title.designers}
+                items={shownDesigners.map((person) => ({
+                  href: `/designer/${person.id}`,
+                  image: person.image,
+                  name: `${person.name} · ${person.id}`,
+                }))}
+                onPick={go}
+              />
             )}
             {shownQuick.length > 0 && (
               <PickGrid
@@ -300,25 +369,43 @@ function PickGrid({
   title,
   items,
   onPick,
+  onRemove,
+  removeLabel,
 }: {
   title: string
   items: { href: string; image: string; name: string }[]
   onPick: (href: string, name: string, image: string) => void
+  onRemove?: (name: string) => void
+  removeLabel?: string
 }) {
   return (
     <section className="mb-4 last:mb-0">
       <h3 className="px-1 text-[15px] font-bold text-slate-950">{title}</h3>
-      <div className="mt-2 grid grid-cols-2 gap-2">
+      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {items.map((item) => (
-          <button
+          <div
             key={`${item.href}-${item.name}`}
-            type="button"
-            onClick={() => onPick(item.href, item.name, item.image)}
-            className="flex min-w-0 items-center gap-3 rounded-2xl bg-[#F4F5F7] p-2 pr-3 text-left hover:bg-[#E8EAEE]"
+            className="group flex min-w-0 items-center rounded-2xl bg-[#F4F5F7] p-2 pr-2 hover:bg-[#E8EAEE]"
           >
-            <img src={item.image} alt="" className="size-14 shrink-0 rounded-xl object-cover" />
-            <span className="truncate text-[15px] font-medium text-slate-900">{item.name}</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => onPick(item.href, item.name, item.image)}
+              className="flex min-w-0 flex-1 items-center gap-3 text-left"
+            >
+              <img src={item.image} alt="" className="size-14 shrink-0 rounded-xl object-cover" />
+              <span className="truncate text-[15px] font-medium text-slate-900">{item.name}</span>
+            </button>
+            {onRemove && (
+              <button
+                type="button"
+                aria-label={removeLabel}
+                onClick={() => onRemove(item.name)}
+                className="grid size-7 shrink-0 place-items-center rounded-full text-slate-500 opacity-0 transition hover:bg-white hover:text-slate-900 group-hover:opacity-100 focus-visible:opacity-100"
+              >
+                <X className="size-3.5" strokeWidth={2.25} />
+              </button>
+            )}
+          </div>
         ))}
       </div>
     </section>

@@ -30,6 +30,7 @@ import {
   User,
   UtensilsCrossed,
   Wifi,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -69,6 +70,161 @@ const palettes = [
 ]
 
 const steps = ['Select QR type', 'Add content', 'Design QR code', 'Download QR code']
+const shortSteps = ['Type', 'Content', 'Design', 'Download']
+
+type ColorMode = 'rgb' | 'cmyk'
+type Cmyk = { c: number; m: number; y: number; k: number }
+type QrShape = 'square' | 'rounded'
+
+const printPngSize = 1000
+
+function clampInk(value: number) {
+  if (Number.isNaN(value)) return 0
+  return Math.min(100, Math.max(0, Math.round(value)))
+}
+
+function cmykToHex(color: Cmyk) {
+  const c = color.c / 100
+  const m = color.m / 100
+  const y = color.y / 100
+  const k = color.k / 100
+  const channels = [255 * (1 - c) * (1 - k), 255 * (1 - m) * (1 - k), 255 * (1 - y) * (1 - k)]
+  return `#${channels.map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`.toUpperCase()
+}
+
+function hexToCmyk(hex: string): Cmyk {
+  const safe = qrColor(hex, '#111827').slice(1)
+  const value = Number.parseInt(safe, 16)
+  const red = ((value >> 16) & 255) / 255
+  const green = ((value >> 8) & 255) / 255
+  const blue = (value & 255) / 255
+  const k = 1 - Math.max(red, green, blue)
+  if (k >= 0.999) return { c: 0, m: 0, y: 0, k: 100 }
+  return {
+    c: clampInk(((1 - red - k) / (1 - k)) * 100),
+    m: clampInk(((1 - green - k) / (1 - k)) * 100),
+    y: clampInk(((1 - blue - k) / (1 - k)) * 100),
+    k: clampInk(k * 100),
+  }
+}
+
+function deviceCmyk(color: Cmyk) {
+  return `device-cmyk(${color.c}% ${color.m}% ${color.y}% ${color.k}%)`
+}
+
+function withCmykFills(svg: string, darkHex: string, lightHex: string, dark: Cmyk, light: Cmyk) {
+  const paint = (source: string, hex: string, color: Cmyk) =>
+    source.replaceAll(new RegExp(`fill="${hex}"`, 'ig'), `fill="${hex}" style="fill:${deviceCmyk(color)}"`)
+  return paint(paint(svg, darkHex, dark), lightHex, light)
+}
+
+function saveBlob(filename: string, blob: Blob) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+function renderQrSvg(text: string, shape: QrShape, logo: string, dark: string, light: string) {
+  const qr = QRCode.create(text, { errorCorrectionLevel: logo ? 'H' : 'M' })
+  const count = qr.modules.size
+  const cell = 10
+  const margin = cell * 2
+  const span = count * cell
+  const width = span + margin * 2
+  const dot = (row: number, col: number) => row >= 0 && col >= 0 && row < count && col < count && qr.modules.get(row, col) === 1
+  const finderAt = (row: number, col: number) =>
+    [
+      [0, 0],
+      [0, count - 7],
+      [count - 7, 0],
+    ].some(([startRow, startCol]) => row >= startRow && row < startRow + 7 && col >= startCol && col < startCol + 7)
+  const parts = [`<rect width="${width}" height="${width}" fill="${light}"/>`]
+  if (shape === 'square') {
+    for (let row = 0; row < count; row += 1) {
+      for (let col = 0; col < count; col += 1) {
+        if (!dot(row, col)) continue
+        parts.push(`<rect x="${margin + col * cell}" y="${margin + row * cell}" width="${cell}" height="${cell}" fill="${dark}"/>`)
+      }
+    }
+  } else {
+    for (let row = 0; row < count; row += 1) {
+      for (let col = 0; col < count; col += 1) {
+        if (!dot(row, col) || finderAt(row, col)) continue
+        const cx = margin + col * cell + cell / 2
+        const cy = margin + row * cell + cell / 2
+        parts.push(`<circle cx="${cx}" cy="${cy}" r="${cell / 2 + 0.6}" fill="${dark}"/>`)
+        if (dot(row, col + 1) && !finderAt(row, col + 1)) {
+          parts.push(`<rect x="${cx}" y="${cy - cell / 2}" width="${cell}" height="${cell}" fill="${dark}"/>`)
+        }
+        if (dot(row + 1, col) && !finderAt(row + 1, col)) {
+          parts.push(`<rect x="${cx - cell / 2}" y="${cy}" width="${cell}" height="${cell}" fill="${dark}"/>`)
+        }
+      }
+    }
+    ;([
+      [0, 0],
+      [0, count - 7],
+      [count - 7, 0],
+    ] as const).forEach(([row, col]) => {
+      const x = margin + col * cell
+      const y = margin + row * cell
+      parts.push(`<rect x="${x}" y="${y}" width="${cell * 7}" height="${cell * 7}" rx="${cell * 1.8}" fill="${dark}"/>`)
+      parts.push(`<rect x="${x + cell}" y="${y + cell}" width="${cell * 5}" height="${cell * 5}" rx="${cell * 1.2}" fill="${light}"/>`)
+      parts.push(`<rect x="${x + cell * 2}" y="${y + cell * 2}" width="${cell * 3}" height="${cell * 3}" rx="${cell * 0.8}" fill="${dark}"/>`)
+    })
+  }
+  const logoMark = logo
+    ? { cx: margin + span / 2, cy: margin + span / 2, radius: span * 0.15, href: logo }
+    : null
+  if (logoMark) {
+    const { cx, cy, radius } = logoMark
+    const side = radius * 2
+    parts.push(`<circle cx="${cx}" cy="${cy}" r="${radius + cell * 0.45}" fill="${light}"/>`)
+    parts.push(`<defs><clipPath id="qr-logo"><circle cx="${cx}" cy="${cy}" r="${radius}"/></clipPath></defs>`)
+    parts.push(
+      `<image href="${logo}" x="${cx - radius}" y="${cy - radius}" width="${side}" height="${side}" clip-path="url(#qr-logo)" preserveAspectRatio="xMidYMid slice"/>`,
+    )
+  }
+  return {
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${width}" width="${width}" height="${width}">${parts.join('')}</svg>`,
+    width,
+    logoMark,
+  }
+}
+
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('QR image failed'))
+    image.src = src
+  })
+}
+
+async function svgToPng(art: { svg: string; width: number; logoMark: { cx: number; cy: number; radius: number; href: string } | null }, px: number) {
+  const image = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(art.svg)}`)
+  const canvas = document.createElement('canvas')
+  canvas.width = px
+  canvas.height = px
+  const context = canvas.getContext('2d')
+  if (!context) return null
+  context.drawImage(image, 0, 0, px, px)
+  if (art.logoMark) {
+    const badge = await loadImage(art.logoMark.href)
+    const scale = px / art.width
+    const { cx, cy, radius } = art.logoMark
+    context.save()
+    context.beginPath()
+    context.arc(cx * scale, cy * scale, radius * scale, 0, Math.PI * 2)
+    context.clip()
+    context.drawImage(badge, (cx - radius) * scale, (cy - radius) * scale, radius * 2 * scale, radius * 2 * scale)
+    context.restore()
+  }
+  return new Promise<Blob | null>((resolve) => canvas.toBlob((blob) => resolve(blob), 'image/png'))
+}
 
 function previewDoc(kind: QrKind): QrDoc {
   const base = { ...emptyQrDoc(), kind, primary: '#2563EB', secondary: '#BFDBFE' }
@@ -118,6 +274,25 @@ async function shrinkPhoto(file: File, limit = 1500) {
   return data
 }
 
+async function readLogo(file: File) {
+  const bitmap = await createImageBitmap(file)
+  const size = 256
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const context = canvas.getContext('2d')
+  if (!context) {
+    bitmap.close()
+    return ''
+  }
+  const scale = Math.max(size / bitmap.width, size / bitmap.height)
+  const width = bitmap.width * scale
+  const height = bitmap.height * scale
+  context.drawImage(bitmap, (size - width) / 2, (size - height) / 2, width, height)
+  bitmap.close()
+  return canvas.toDataURL('image/png')
+}
+
 function readStep(value: string | null) {
   const step = Number(value)
   return step >= 1 && step <= 4 ? step : 1
@@ -130,6 +305,11 @@ export function QrGenerator() {
   const [view, setView] = useState<'page' | 'qr'>('page')
   const [ink, setInk] = useState('#111827')
   const [paper, setPaper] = useState('#ffffff')
+  const [colorMode, setColorMode] = useState<ColorMode>('rgb')
+  const [inkCmyk, setInkCmyk] = useState<Cmyk>({ c: 0, m: 0, y: 0, k: 100 })
+  const [paperCmyk, setPaperCmyk] = useState<Cmyk>({ c: 0, m: 0, y: 0, k: 0 })
+  const [shape, setShape] = useState<QrShape>('square')
+  const [logo, setLogo] = useState('')
   const [src, setSrc] = useState('')
   const [hoverKind, setHoverKind] = useState<QrKind>('pdf')
 
@@ -158,19 +338,9 @@ export function QrGenerator() {
       setSrc('')
       return
     }
-    let alive = true
-    QRCode.toDataURL(next, {
-      margin: 1,
-      width: 320,
-      errorCorrectionLevel: 'M',
-      color: { dark: qrColor(ink, '#111827'), light: qrColor(paper, '#ffffff') },
-    }).then((url) => {
-      if (alive) setSrc(url)
-    })
-    return () => {
-      alive = false
-    }
-  }, [doc, ink, paper])
+    const art = renderQrSvg(next, shape, logo, qrColor(ink, '#111827'), qrColor(paper, '#ffffff'))
+    setSrc(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(art.svg)}`)
+  }, [doc, ink, paper, shape, logo])
 
   function patch(partial: Partial<QrDoc>) {
     setDoc((current) => ({ ...current, ...partial }))
@@ -227,14 +397,9 @@ export function QrGenerator() {
             </div>
           </div>
           <div className="sticky top-4 hidden lg:block">
-            <div className="mx-auto w-[270px] rounded-[40px] border-[8px] border-slate-900 bg-slate-900 shadow-[0_20px_50px_rgba(15,23,42,0.18)]">
-              <div className="relative h-[540px] overflow-hidden rounded-[32px] bg-white">
-                <div className="absolute top-2 left-1/2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-slate-900" />
-                <div className="h-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <QrCard doc={previewDoc(hoverKind)} />
-                </div>
-              </div>
-            </div>
+            <PhoneShell>
+              <QrCard doc={previewDoc(hoverKind)} />
+            </PhoneShell>
           </div>
         </div>
       ) : (
@@ -246,8 +411,60 @@ export function QrGenerator() {
             </h1>
             <div className="mt-4 grid gap-3">
               {step === 2 && <ContentForm doc={doc} onPatch={patch} onItem={setItem} />}
-              {step === 3 && <DesignForm ink={ink} paper={paper} onInk={setInk} onPaper={setPaper} />}
-              {step === 4 && <DownloadForm src={src} ready={qrReady(doc)} kind={selected?.title ?? 'QR'} />}
+              {step === 3 && (
+                <DesignForm
+                  mode={colorMode}
+                  shape={shape}
+                  logo={logo}
+                  ink={ink}
+                  paper={paper}
+                  inkCmyk={inkCmyk}
+                  paperCmyk={paperCmyk}
+                  onShape={(next) => {
+                    setShape(next)
+                    setView('qr')
+                  }}
+                  onLogo={(next) => {
+                    setLogo(next)
+                    setView('qr')
+                  }}
+                  onMode={(mode) => {
+                    setColorMode(mode)
+                    if (mode === 'cmyk') {
+                      const nextInk = hexToCmyk(ink)
+                      const nextPaper = hexToCmyk(paper)
+                      setInkCmyk(nextInk)
+                      setPaperCmyk(nextPaper)
+                      setInk(cmykToHex(nextInk))
+                      setPaper(cmykToHex(nextPaper))
+                    }
+                  }}
+                  onInk={setInk}
+                  onPaper={setPaper}
+                  onInkCmyk={(next) => {
+                    setInkCmyk(next)
+                    setInk(cmykToHex(next))
+                  }}
+                  onPaperCmyk={(next) => {
+                    setPaperCmyk(next)
+                    setPaper(cmykToHex(next))
+                  }}
+                />
+              )}
+              {step === 4 && (
+                <DownloadForm
+                  ready={qrReady(doc)}
+                  kind={selected?.title ?? 'QR'}
+                  target={typeof window === 'undefined' ? '' : qrTarget(doc, window.location.origin)}
+                  ink={ink}
+                  paper={paper}
+                  mode={colorMode}
+                  shape={shape}
+                  logo={logo}
+                  inkCmyk={inkCmyk}
+                  paperCmyk={paperCmyk}
+                />
+              )}
             </div>
             <div className="mt-5 flex items-center justify-between gap-3">
               <button
@@ -281,29 +498,34 @@ export function QrGenerator() {
 
 function Stepper({ step, onStep }: { step: number; onStep: (step: number) => void }) {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2 text-sm">
+    <div className="flex flex-nowrap items-center justify-between gap-1 text-[11px] sm:justify-center sm:gap-x-2 sm:text-sm">
       {steps.map((label, index) => {
         const number = index + 1
         const done = number < step
         const current = number === step
         return (
-          <div key={label} className="flex items-center gap-2">
+          <div key={label} className="flex items-center gap-1 sm:gap-2">
             <button
               type="button"
               onClick={() => {
                 if (number < step) onStep(number)
               }}
-              className={cn('inline-flex items-center gap-2', number > step && 'cursor-default')}
+              className={cn('inline-flex items-center gap-1 sm:gap-2', number > step && 'cursor-default')}
             >
               <span
                 className={cn(
-                  'grid size-6 place-items-center rounded-full text-xs font-bold',
+                  'grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-bold sm:size-6 sm:text-xs',
                   done || current ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500',
                 )}
               >
-                {done ? <Check className="size-3.5" /> : number}
+                {done ? <Check className="size-3 sm:size-3.5" /> : number}
               </span>
-              <span className={cn('font-medium', current ? 'text-blue-700' : done ? 'text-slate-700' : 'text-slate-400')}>{label}</span>
+              <span className={cn('font-medium whitespace-nowrap sm:hidden', current ? 'text-blue-700' : done ? 'text-slate-700' : 'text-slate-400')}>
+                {shortSteps[index]}
+              </span>
+              <span className={cn('hidden font-medium whitespace-nowrap sm:inline', current ? 'text-blue-700' : done ? 'text-slate-700' : 'text-slate-400')}>
+                {label}
+              </span>
             </button>
             {number < steps.length && <span className={cn('hidden h-px w-6 sm:block', number < step ? 'bg-blue-400' : 'bg-slate-200')} />}
           </div>
@@ -538,31 +760,235 @@ function DesignSection({ doc, onPatch }: { doc: QrDoc; onPatch: (partial: Partia
   )
 }
 
-function DesignForm({ ink, paper, onInk, onPaper }: { ink: string; paper: string; onInk: (value: string) => void; onPaper: (value: string) => void }) {
+function DesignForm({
+  mode,
+  shape,
+  logo,
+  ink,
+  paper,
+  inkCmyk,
+  paperCmyk,
+  onMode,
+  onShape,
+  onLogo,
+  onInk,
+  onPaper,
+  onInkCmyk,
+  onPaperCmyk,
+}: {
+  mode: ColorMode
+  shape: QrShape
+  logo: string
+  ink: string
+  paper: string
+  inkCmyk: Cmyk
+  paperCmyk: Cmyk
+  onMode: (mode: ColorMode) => void
+  onShape: (shape: QrShape) => void
+  onLogo: (logo: string) => void
+  onInk: (value: string) => void
+  onPaper: (value: string) => void
+  onInkCmyk: (value: Cmyk) => void
+  onPaperCmyk: (value: Cmyk) => void
+}) {
+  const shapes: { id: QrShape; label: string }[] = [
+    { id: 'square', label: 'Square' },
+    { id: 'rounded', label: 'Rounded' },
+  ]
   return (
-    <Section icon={<Palette className="size-4" />} title="QR code colors" text="These colors are used on the code itself.">
-      <div className="flex flex-wrap gap-3">
-        <ColorField label="Code color" value={ink} onChange={onInk} />
-        <ColorField label="Background" value={paper} onChange={onPaper} />
+    <Section icon={<Palette className="size-4" />} title="QR code design" text="Shape, a center logo, and colors.">
+      <p className="text-sm font-medium text-slate-700">Shape</p>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        {shapes.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onShape(item.id)}
+            className={cn(
+              'flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left',
+              shape === item.id ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white',
+            )}
+          >
+            <ShapeMark kind={item.id} />
+            <span className="text-sm font-semibold text-slate-900">{item.label}</span>
+          </button>
+        ))}
       </div>
+      <div className="mt-4">
+        <p className="text-sm font-medium text-slate-700">Logo</p>
+        <div className="mt-2 flex items-center gap-3">
+          <label className="grid size-16 cursor-pointer place-items-center overflow-hidden rounded-full border border-dashed border-blue-400 bg-white text-blue-600">
+            {logo ? <img src={logo} alt="" className="size-full object-cover" /> : <ImagePlus className="size-5" />}
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                event.target.value = ''
+                if (!file) return
+                readLogo(file).then(onLogo)
+              }}
+            />
+          </label>
+          <div className="min-w-0">
+            <p className="text-sm text-slate-500">Sits in the middle of the code.</p>
+            {logo && (
+              <button type="button" onClick={() => onLogo('')} className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-800">
+                <X className="size-3.5" />
+                Remove
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 inline-flex rounded-full bg-slate-100 p-1">
+        {(['rgb', 'cmyk'] as const).map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onMode(item)}
+            className={cn('h-9 rounded-full px-4 text-sm font-semibold', mode === item ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500')}
+          >
+            {item === 'rgb' ? 'RGB' : 'CMYK (print)'}
+          </button>
+        ))}
+      </div>
+      {mode === 'rgb' ? (
+        <div className="mt-4 flex flex-wrap gap-3">
+          <ColorField label="Code color" value={ink} onChange={onInk} />
+          <ColorField label="Background" value={paper} onChange={onPaper} />
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <CmykField label="Code color" value={inkCmyk} onChange={onInkCmyk} />
+          <CmykField label="Background" value={paperCmyk} onChange={onPaperCmyk} />
+        </div>
+      )}
     </Section>
   )
 }
 
-function DownloadForm({ src, ready, kind }: { src: string; ready: boolean; kind: string }) {
+function ShapeMark({ kind }: { kind: QrShape }) {
+  const rounded = kind === 'rounded'
   return (
-    <Section icon={<Download className="size-4" />} title={kind} text={ready ? 'Save the image and share it.' : 'Go back and fill in the form first.'}>
-      {src ? (
-        <a href={src} download="qr-code.png" className="inline-flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">
-          <Download className="size-4" />
-          Download QR Code
-        </a>
+    <svg viewBox="0 0 36 36" className="size-9 shrink-0" aria-hidden>
+      <rect x="1" y="1" width="14" height="14" rx={rounded ? 4 : 1} fill="#111827" />
+      <rect x="4" y="4" width="8" height="8" rx={rounded ? 2 : 0.5} fill="#ffffff" />
+      <rect x="6.5" y="6.5" width="3" height="3" rx={rounded ? 1 : 0.4} fill="#111827" />
+      {rounded ? (
+        <>
+          <circle cx="26" cy="8" r="2.2" fill="#111827" />
+          <circle cx="31" cy="8" r="2.2" fill="#111827" />
+          <rect x="26" y="5.8" width="5" height="4.4" fill="#111827" />
+          <circle cx="26" cy="26" r="2.2" fill="#111827" />
+          <circle cx="26" cy="31" r="2.2" fill="#111827" />
+          <rect x="23.8" y="26" width="4.4" height="5" fill="#111827" />
+        </>
       ) : (
-        <span className="inline-flex h-11 items-center gap-2 rounded-lg bg-slate-200 px-4 text-sm font-semibold text-slate-500">
-          <Download className="size-4" />
-          Download QR Code
-        </span>
+        <>
+          <rect x="22" y="4" width="5" height="5" fill="#111827" />
+          <rect x="28" y="4" width="5" height="5" fill="#111827" />
+          <rect x="22" y="22" width="5" height="5" fill="#111827" />
+          <rect x="28" y="28" width="5" height="5" fill="#111827" />
+        </>
       )}
+    </svg>
+  )
+}
+
+function CmykField({ label, value, onChange }: { label: string; value: Cmyk; onChange: (value: Cmyk) => void }) {
+  const keys = ['c', 'm', 'y', 'k'] as const
+  return (
+    <div>
+      <p className="text-sm font-medium text-slate-700">{label}</p>
+      <div className="mt-2 flex gap-2">
+        {keys.map((key) => (
+          <label key={key} className="grid w-14 gap-1 text-[11px] font-semibold text-slate-400">
+            {key.toUpperCase()}
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={value[key]}
+              onChange={(event) => onChange({ ...value, [key]: clampInk(Number(event.target.value)) })}
+              className="h-10 w-full rounded-lg border border-slate-200 px-2 text-sm font-medium text-slate-800 outline-none"
+            />
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DownloadForm({
+  ready,
+  kind,
+  target,
+  ink,
+  paper,
+  mode,
+  shape,
+  logo,
+  inkCmyk,
+  paperCmyk,
+}: {
+  ready: boolean
+  kind: string
+  target: string
+  ink: string
+  paper: string
+  mode: ColorMode
+  shape: QrShape
+  logo: string
+  inkCmyk: Cmyk
+  paperCmyk: Cmyk
+}) {
+  const dark = qrColor(ink, '#111827')
+  const light = qrColor(paper, '#ffffff')
+
+  function artwork() {
+    const art = renderQrSvg(target, shape, logo, dark, light)
+    if (mode === 'cmyk') art.svg = withCmykFills(art.svg, dark, light, inkCmyk, paperCmyk)
+    return art
+  }
+
+  function downloadSvg() {
+    if (!target) return
+    saveBlob(`qr-${mode}.svg`, new Blob([artwork().svg], { type: 'image/svg+xml' }))
+  }
+
+  async function downloadPng() {
+    if (!target) return
+    const blob = await svgToPng(artwork(), printPngSize)
+    if (blob) saveBlob(`qr-${mode}.png`, blob)
+  }
+
+  return (
+    <Section icon={<Download className="size-4" />} title={kind} text={ready ? 'SVG for print, PNG as a light image.' : 'Go back and fill in the form first.'}>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={!ready || !target}
+          onClick={() => void downloadSvg()}
+          className="inline-flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-500"
+        >
+          <Download className="size-4" />
+          Download SVG
+        </button>
+        <button
+          type="button"
+          disabled={!ready || !target}
+          onClick={() => void downloadPng()}
+          className="inline-flex h-11 items-center gap-2 rounded-lg border border-blue-600 bg-white px-4 text-sm font-semibold text-blue-700 disabled:border-slate-200 disabled:text-slate-400"
+        >
+          <Download className="size-4" />
+          Download PNG
+        </button>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-slate-500">
+        SVG — векторный файл, его удобно отдавать в типографию. PNG — сжатая картинка {printPngSize} px, её легче переслать. В режиме CMYK в SVG записываются краски для печати.
+      </p>
     </Section>
   )
 }
@@ -655,6 +1081,17 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
   )
 }
 
+function PhoneShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="mx-auto w-[270px] rounded-[40px] border-[8px] border-slate-900 bg-slate-900 shadow-[0_20px_50px_rgba(15,23,42,0.18)]">
+      <div className="relative h-[540px] overflow-hidden rounded-[32px] bg-white">
+        <div className="absolute top-2 left-1/2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-slate-900" />
+        <div className="h-full w-full min-w-0 overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
+      </div>
+    </div>
+  )
+}
+
 function PhoneFrame({
   view,
   onView,
@@ -678,18 +1115,15 @@ function PhoneFrame({
           </button>
         </div>
       </div>
-      <div className="mx-auto w-[270px] rounded-[40px] border-[8px] border-slate-900 bg-slate-900 shadow-[0_20px_50px_rgba(15,23,42,0.18)]">
-        <div className="relative h-[540px] overflow-hidden rounded-[32px] bg-white">
-          <div className="absolute left-1/2 top-2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-slate-900" />
-          {view === 'qr' ? (
-            <div className="grid h-full place-items-center bg-white px-6">
-              {src ? <img src={src} alt="QR code" className="w-full" /> : <span className="text-sm text-slate-400">Fill in the form</span>}
-            </div>
-          ) : (
-            <div className="h-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
-          )}
-        </div>
-      </div>
+      <PhoneShell>
+        {view === 'qr' ? (
+          <div className="grid h-full place-items-center bg-white px-8">
+            {src ? <img src={src} alt="QR code" className="w-full" /> : <span className="text-sm text-slate-400">Fill in the form</span>}
+          </div>
+        ) : (
+          children
+        )}
+      </PhoneShell>
     </aside>
   )
 }

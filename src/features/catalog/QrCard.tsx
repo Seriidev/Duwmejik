@@ -1,4 +1,4 @@
-import { Mail, MapPin, Phone } from 'lucide-react'
+import { Briefcase, Globe, Mail, MapPin, Phone } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { isHostedQr, qrColor, qrFullName, qrTarget, withProtocol, type QrDoc } from '@/lib/qrDoc'
 
@@ -32,35 +32,35 @@ export function QrCard({ doc }: { doc: QrDoc }) {
   }
 
   return (
-    <div className="overflow-hidden bg-white">
-      <div className="px-6 pt-14 pb-12 text-center text-white" style={{ background: `linear-gradient(180deg, ${secondary} 0%, ${primary} 100%)` }}>
+    <div className="w-full min-w-0 max-w-full overflow-hidden bg-white">
+      <div className="px-5 pt-16 pb-8 text-center text-white" style={{ background: `linear-gradient(180deg, ${secondary} 0%, ${primary} 100%)` }}>
         {photo ? (
-          <img src={photo} alt="" className="mx-auto size-24 rounded-full object-cover ring-4 ring-white/50" />
+          <img src={photo} alt="" className="mx-auto size-16 rounded-full object-cover ring-4 ring-white/50" />
         ) : (
-          <span className="mx-auto grid size-24 place-items-center rounded-full bg-white/20 text-3xl font-semibold">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-white/20 text-2xl font-semibold">
             {(name || '?').slice(0, 1)}
           </span>
         )}
-        <h2 className="mt-4 text-2xl font-bold">{name}</h2>
-        {role && <p className="mt-1 text-sm text-white/80">{role}</p>}
+        <h2 className="mt-3 break-words px-2 text-lg font-bold leading-tight">{name}</h2>
+        {role && <p className="mt-1 text-xs text-white/80">{role}</p>}
         {doc.kind === 'vcard' && (
-          <div className="mt-5 flex justify-center gap-3">
-            <Round href={doc.phone ? `tel:${doc.phone}` : undefined} icon={<Phone className="size-4" />} />
-            <Round href={doc.email ? `mailto:${doc.email}` : undefined} icon={<Mail className="size-4" />} />
-            <Round href={doc.address ? `https://maps.google.com/?q=${encodeURIComponent(doc.address)}` : undefined} icon={<MapPin className="size-4" />} />
+          <div className="mt-3 flex justify-center gap-2">
+            <Round href={doc.phone ? `tel:${doc.phone}` : undefined} icon={<Phone className="size-3.5" />} />
+            <Round href={doc.email ? `mailto:${doc.email}` : undefined} icon={<Mail className="size-3.5" />} />
+            <Round href={doc.address ? `https://maps.google.com/?q=${encodeURIComponent(doc.address)}` : undefined} icon={<MapPin className="size-3.5" />} />
           </div>
         )}
       </div>
-      <div className="-mt-6 rounded-t-3xl bg-white px-5 pb-6 pt-6">
+      <div className="-mt-4 rounded-t-3xl bg-white px-3 pb-4 pt-4">
         {doc.text && <p className="text-center text-sm leading-6 text-slate-500">{doc.text}</p>}
-        <div className="mt-4 grid gap-2">{body(doc, primary)}</div>
+        <div className="mt-3 grid w-full min-w-0 grid-cols-1 gap-2">{body(doc, primary)}</div>
       </div>
     </div>
   )
 }
 
 function Round({ href, icon }: { href?: string; icon: ReactNode }) {
-  const className = 'grid size-11 place-items-center rounded-full bg-white text-slate-700 shadow-sm'
+  const className = 'grid size-9 place-items-center rounded-full bg-white text-slate-700 shadow-sm'
   if (!href) return <span className={className}>{icon}</span>
   return (
     <a href={href} className={className}>
@@ -74,13 +74,13 @@ function body(doc: QrDoc, primary: string) {
     return (
       <>
         {doc.phone && <Row icon={<Phone className="size-4" />} label="Phone" value={doc.phone} href={`tel:${doc.phone}`} />}
-        {doc.email && <Row icon={<Mail className="size-4" />} label="Email" value={doc.email} href={`mailto:${doc.email}`} />}
-        {doc.company && <Row label="Company" value={doc.company} />}
-        {doc.companyPhone && <Row label="Work phone" value={doc.companyPhone} href={`tel:${doc.companyPhone}`} />}
-        {doc.companyEmail && <Row label="Work email" value={doc.companyEmail} href={`mailto:${doc.companyEmail}`} />}
-        {safeUrl(doc.site) && <Row label="Website" value={doc.site} href={safeUrl(doc.site)} />}
+        {doc.email && <Row icon={<Mail className="size-3.5" />} label="Email" value={doc.email} href={`mailto:${doc.email}`} />}
+        {doc.company && <Row icon={<Briefcase className="size-3.5" />} label="Company" value={doc.company} />}
+        {doc.companyPhone && <Row icon={<Phone className="size-3.5" />} label="Work phone" value={doc.companyPhone} href={`tel:${doc.companyPhone}`} />}
+        {doc.companyEmail && <Row icon={<Mail className="size-3.5" />} label="Work email" value={doc.companyEmail} href={`mailto:${doc.companyEmail}`} />}
+        {safeUrl(doc.site) && <Row icon={<Globe className="size-3.5" />} label="Website" value={doc.site} href={safeUrl(doc.site)} />}
         {doc.address && <Row icon={<MapPin className="size-4" />} label="Address" value={doc.address} />}
-        <a href={vcardFile(doc)} download="contact.vcf" className="mt-2 inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold text-white" style={{ background: primary }}>
+        <a href={vcardFile(doc)} download="contact.vcf" className="mt-1 flex h-11 w-full min-w-0 items-center justify-center rounded-xl px-4 text-sm font-semibold text-white" style={{ background: primary }}>
           Save contact
         </a>
       </>
@@ -91,7 +91,7 @@ function body(doc: QrDoc, primary: string) {
       <>
         {doc.phone && <Row icon={<Phone className="size-4" />} label="Phone" value={doc.phone} href={`tel:${doc.phone}`} />}
         {doc.email && <Row icon={<Mail className="size-4" />} label="Email" value={doc.email} href={`mailto:${doc.email}`} />}
-        {safeUrl(doc.site) && <Row label="Website" value={doc.site} href={safeUrl(doc.site)} />}
+        {safeUrl(doc.site) && <Row icon={<Globe className="size-3.5" />} label="Website" value={doc.site} href={safeUrl(doc.site)} />}
         {doc.address && <Row icon={<MapPin className="size-4" />} label="Address" value={doc.address} />}
       </>
     )
@@ -157,16 +157,20 @@ function body(doc: QrDoc, primary: string) {
 
 function Row({ icon, label, value, href }: { icon?: ReactNode; label: string; value: string; href?: string }) {
   const inner = (
-    <span className="flex items-center gap-3 rounded-2xl border border-slate-100 px-3 py-2.5">
-      {icon && <span className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500">{icon}</span>}
-      <span className="min-w-0 text-left">
-        <span className="block text-[11px] text-slate-400">{label}</span>
-        <span className="block truncate text-sm font-medium text-slate-800">{value}</span>
+    <span className="flex w-full min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-xl border border-slate-100 px-2.5 py-1.5">
+      {icon && <span className="grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500">{icon}</span>}
+      <span className="w-0 min-w-0 flex-1 text-left">
+        <span className="block truncate text-[10px] leading-4 text-slate-400">{label}</span>
+        <span className="block text-xs font-medium leading-4 break-all text-slate-800">{value}</span>
       </span>
     </span>
   )
   if (!href) return inner
-  return <a href={href}>{inner}</a>
+  return (
+    <a href={href} className="block w-full min-w-0 max-w-full">
+      {inner}
+    </a>
+  )
 }
 
 function vcardFile(doc: QrDoc) {

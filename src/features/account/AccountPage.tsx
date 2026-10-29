@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Bookmark, Camera, ChevronLeft, Eye, Heart } from 'lucide-react'
+import { MdOutlineImageSearch } from 'react-icons/md'
 import cardPreview from '@/assets/card-preview.jpg'
 import logoBell from '@/assets/logo-bell.png'
 import { Gate } from '@/components/Gate'
@@ -224,6 +225,11 @@ export function AccountPage() {
               {[parts.first, parts.last].filter(Boolean).join(' ')}
             </h1>
             <p className="mt-1 truncate text-slate-500">{user.email}</p>
+            {(user.role === 'seller' || user.role === 'admin') && (
+              <p className="mt-1 text-sm text-slate-500">
+                ID <span className="font-semibold text-slate-950">{user.id}</span>
+              </p>
+            )}
           </div>
         </div>
 
@@ -316,7 +322,7 @@ export function AccountPage() {
                         onClick={() => router.push(isPrintWork(product) ? '/templates?section=gallery' : '/templates')}
                         className="pointer-events-none absolute left-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
                       >
-                        <SimilarIcon />
+                        <MdOutlineImageSearch className="size-5" />
                       </button>
                       <button
                         type="button"
@@ -434,6 +440,11 @@ export function AccountPage() {
             <p className="text-sm leading-6 text-slate-500">
               Загружайте шаблоны и смотрите, какие работы на проверке, одобрены или отклонены.
             </p>
+            {(user.role === 'seller' || user.role === 'admin') && (
+              <p className="text-sm text-slate-500">
+                ID дизайнера <span className="font-semibold text-slate-950">{user.id}</span>
+              </p>
+            )}
             {user.role === 'seller' || user.role === 'admin' ? (
               <Link href="/seller" className="inline-flex h-11 w-fit items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
                 Открыть кабинет дизайнера
@@ -521,18 +532,6 @@ function ProfileBar({ onBack }: { onBack: () => void }) {
         <span className="text-[17px]">Duwmejik</span>
       </Link>
     </div>
-  )
-}
-
-function SimilarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="4.5" width="12" height="10" rx="2" />
-      <circle cx="7" cy="8" r="0.8" fill="currentColor" stroke="none" />
-      <path d="M4 13.2 7.2 10.4 10.2 12.6" />
-      <circle cx="16.2" cy="16.2" r="2.7" />
-      <path d="m18.3 18.3 2.2 2.2" />
-    </svg>
   )
 }
 

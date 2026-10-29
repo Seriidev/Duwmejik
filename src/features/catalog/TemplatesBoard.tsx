@@ -1,6 +1,7 @@
 'use client'
 
 import { Bell, Bookmark, ClipboardList, Eye, Heart, Image as ImageIcon, LayoutGrid, PanelLeftOpen, QrCode } from 'lucide-react'
+import { MdOutlineImageSearch } from 'react-icons/md'
 import cardPreview from '@/assets/card-preview.jpg'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
@@ -454,7 +455,7 @@ export function TemplatesBoard() {
                           onClick={() => showSimilar(product)}
                           className="pointer-events-none absolute left-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
                         >
-                          <SimilarIcon />
+                          <MdOutlineImageSearch className="size-5" />
                         </button>
                         <button
                           type="button"
@@ -569,14 +570,3 @@ function PanelHeader({
   return <div className="shrink-0 border-b border-slate-100 bg-white px-6 pb-4 pt-5 lg:rounded-t-[28px]">{row}</div>
 }
 
-function SimilarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="4.5" width="12" height="10" rx="2" />
-      <circle cx="7" cy="8" r="0.8" fill="currentColor" stroke="none" />
-      <path d="M4 13.2 7.2 10.4 10.2 12.6" />
-      <circle cx="16.2" cy="16.2" r="2.7" />
-      <path d="m18.3 18.3 2.2 2.2" />
-    </svg>
-  )
-}

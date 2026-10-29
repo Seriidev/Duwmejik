@@ -149,11 +149,11 @@ export function SideMenu({
           })}
         </nav>
 
-        <div className={cn('px-3 pt-3', !expanded && 'flex justify-center px-0')}>
+        <div className={cn('px-3 pt-3', !expanded && 'flex justify-center px-1')}>
           <div
             className={cn(
-              'flex rounded-full p-1',
-              expanded ? 'w-full flex-row' : 'w-11 flex-col',
+              'flex flex-row rounded-full p-0.5',
+              expanded ? 'h-8 w-32' : 'h-7 w-14',
               dark ? 'bg-white/10' : 'bg-[#f2f2f2]',
             )}
           >
@@ -163,12 +163,11 @@ export function SideMenu({
               aria-pressed={theme === 'light'}
               onClick={() => setTheme('light')}
               className={cn(
-                'grid place-items-center rounded-full transition',
-                expanded ? 'h-10 flex-1' : 'size-9',
+                'grid min-w-0 flex-1 place-items-center rounded-full transition',
                 theme === 'light' ? 'bg-white text-[#111] shadow-[0_1px_4px_rgba(0,0,0,0.16)]' : dark ? 'text-white/70' : 'text-[#6b6b6b]',
               )}
             >
-              <Sun className="size-[18px]" strokeWidth={1.75} />
+              <Sun className={expanded ? 'size-3.5' : 'size-3'} strokeWidth={1.75} />
             </button>
             <button
               type="button"
@@ -176,12 +175,11 @@ export function SideMenu({
               aria-pressed={theme === 'dark'}
               onClick={() => setTheme('dark')}
               className={cn(
-                'grid place-items-center rounded-full transition',
-                expanded ? 'h-10 flex-1' : 'size-9',
+                'grid min-w-0 flex-1 place-items-center rounded-full transition',
                 theme === 'dark' ? 'bg-white text-[#111] shadow-[0_1px_4px_rgba(0,0,0,0.16)]' : dark ? 'text-white/70' : 'text-[#6b6b6b]',
               )}
             >
-              <Moon className="size-[18px]" strokeWidth={1.75} />
+              <Moon className={expanded ? 'size-3.5' : 'size-3'} strokeWidth={1.75} />
             </button>
           </div>
         </div>

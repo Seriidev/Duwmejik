@@ -4,7 +4,6 @@ import {
   Clock,
   CreditCard,
   Diamond,
-  Flame,
   Layers,
   Minus,
   Plus,
@@ -17,6 +16,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import cardPreview from '@/assets/card-preview.jpg'
+import logoBell from '@/assets/logo-bell.png'
 import { SmoothSelect } from '@/components/ui/SmoothSelect'
 import { Modal } from '@/components/ui/Modal'
 import { cn } from '@/lib/cn'
@@ -143,9 +143,9 @@ export function PreviewModal({
                 {category?.title ?? 'Макет'}
               </span>
               {popular && (
-                <span className="absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-amber-300">
-                  <Flame className="size-3.5" />
-                  Популярный
+                <span className="absolute top-3 right-3 inline-flex max-w-[calc(100%-5.5rem)] items-center gap-1.5 rounded-full bg-[#146c43] px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm sm:text-xs">
+                  <img src={logoBell.src} alt="" className="size-5 shrink-0 object-contain" />
+                  Лучший дизайн Duwmejik
                 </span>
               )}
               <button
