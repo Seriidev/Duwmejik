@@ -1,6 +1,6 @@
 'use client'
 
-import { Star } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Star } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { Reveal } from '@/components/Reveal'
@@ -147,7 +147,7 @@ function CircleRail({ locale }: { locale: Locale }) {
               <img
                 src={item.src}
                 alt=""
-                className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:-translate-x-4 group-hover:scale-110"
+                className="h-full w-full origin-center object-cover transition-transform duration-700 ease-out group-hover:scale-110"
               />
             </span>
             <span className="text-center text-[13px] font-medium text-slate-500">{item[locale]}</span>
@@ -424,10 +424,14 @@ export function HomePage() {
   const products = useCatalogStore((state) => state.products)
   const published = products.filter((item) => item.status === 'published')
   const [categoryId, setCategoryId] = useState('')
+  const [productPage, setProductPage] = useState(0)
   const circles = circleIds
     .map((id) => categories.find((item) => item.id === id))
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
-  const visible = published.filter((item) => !categoryId || item.categoryId === categoryId)
+  const filtered = published.filter((item) => !categoryId || item.categoryId === categoryId)
+  const pageCount = Math.max(1, Math.ceil(filtered.length / 3))
+  const safePage = Math.min(productPage, pageCount - 1)
+  const visible = filtered.slice(safePage * 3, safePage * 3 + 3)
   const rating = published.length ? published.reduce((sum, item) => sum + item.rating, 0) / published.length : 4.9
 
   return (
@@ -451,11 +455,11 @@ export function HomePage() {
             <div className="mx-auto mt-9 w-full max-w-[540px]">
               <SearchBox appearance="hero" placeholder={page.search} submitLabel={page.find} />
             </div>
-            <div className="mt-5 flex flex-col items-stretch justify-center gap-3 min-[420px]:flex-row min-[420px]:flex-wrap min-[420px]:items-center">
-              <Link href="/templates" className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-white">
+            <div className="mx-auto mt-5 flex w-full max-w-[540px] justify-center gap-2 sm:w-auto sm:max-w-none sm:gap-3">
+              <Link href="/templates" className="inline-flex h-10 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full bg-brand px-3 text-xs font-semibold text-white sm:flex-none sm:px-5 sm:text-sm">
                 {page.allTemplates}
               </Link>
-              <Link href="/templates?section=orders" className="inline-flex h-10 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold text-neutral-950">
+              <Link href="/templates?section=orders" className="inline-flex h-10 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full bg-white px-3 text-xs font-semibold text-neutral-950 sm:flex-none sm:px-5 sm:text-sm">
                 {page.orderPrint}
               </Link>
             </div>
@@ -473,19 +477,41 @@ export function HomePage() {
         <Reveal>
         <div className={panel}>
           <h2 className="text-lg font-semibold text-slate-950">{page.products}</h2>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <FilterChip active={categoryId === ''} onClick={() => setCategoryId('')}>
-              {page.all}
-            </FilterChip>
-            {circles.map((category) => (
-              <FilterChip
-                key={category.id}
-                active={categoryId === category.id}
-                onClick={() => setCategoryId(category.id)}
-              >
-                {names[category.id] ?? category.title}
+          <div className="mt-4 flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1">
+              <FilterChip active={categoryId === ''} onClick={() => { setCategoryId(''); setProductPage(0) }}>
+                {page.all}
               </FilterChip>
-            ))}
+              {circles.map((category) => (
+                <FilterChip
+                  key={category.id}
+                  active={categoryId === category.id}
+                  onClick={() => { setCategoryId(category.id); setProductPage(0) }}
+                >
+                  {names[category.id] ?? category.title}
+                </FilterChip>
+              ))}
+            </div>
+            <div className="flex shrink-0 gap-1.5">
+              <button
+                type="button"
+                aria-label={page.prev}
+                disabled={safePage === 0}
+                onClick={() => setProductPage(safePage - 1)}
+                className="grid size-8 place-items-center rounded-full bg-white text-slate-700 disabled:opacity-40"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                type="button"
+                aria-label={page.next}
+                disabled={safePage >= pageCount - 1}
+                onClick={() => setProductPage(safePage + 1)}
+                className="grid size-8 place-items-center rounded-full bg-white text-slate-700 disabled:opacity-40"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </div>
           </div>
 
           {visible.length === 0 ? (
@@ -515,6 +541,12 @@ export function HomePage() {
             </div>
           )}
 
+          <div className="mt-4 h-1.5 w-14 overflow-hidden rounded-full bg-[#E1E3E8]">
+            <div
+              className="h-full rounded-full bg-brand"
+              style={{ width: `${100 / pageCount}%`, marginLeft: `${(safePage / pageCount) * 100}%` }}
+            />
+          </div>
         </div>
         </Reveal>
       </section>

@@ -345,7 +345,7 @@ export function TemplatesBoard() {
           />
           </div>
         ) : panel === 'qr' ? (
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto">
           <QrGenerator />
           </div>
         ) : (

@@ -76,6 +76,22 @@ export function SellerPage() {
     )
   }
 
+  if (user.role !== 'buyer' && !/^@[A-Za-z0-9_]{2,24}$/.test(user.handle ?? '')) {
+    return (
+      <div className="min-h-svh bg-white">
+        <Gate
+          title="Укажите ID"
+          text="ID дизайнера начинается с @ и обязателен. Поле стоит в настройках профиля, сразу после почты."
+          action={
+            <Link href="/account?tab=settings" className={buttonClass()}>
+              Открыть настройки
+            </Link>
+          }
+        />
+      </div>
+    )
+  }
+
   if (user.role === 'buyer') {
     return (
       <div className="min-h-svh bg-white">

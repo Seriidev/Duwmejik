@@ -74,6 +74,7 @@ export interface SessionUser {
   company: string
   city: string
   address: string
+  handle: string
   avatar?: string
 }
 

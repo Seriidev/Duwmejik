@@ -17,10 +17,11 @@ export function QrCard({ doc }: { doc: QrDoc }) {
   const primary = qrColor(doc.primary, '#527AC9')
   const secondary = qrColor(doc.secondary, '#7EC09F')
   const photo = photoSrc(doc.photo)
-  const name = doc.kind === 'business' ? doc.company || 'Business' : doc.kind === 'vcard' ? qrFullName(doc) || 'Your name' : doc.title || 'QR page'
-  const role = doc.kind === 'vcard' ? doc.role : ''
+  const person = doc.kind === 'vcard' || doc.kind === 'contact'
+  const name = doc.kind === 'business' ? doc.company || 'Business' : person ? qrFullName(doc) || 'Your name' : doc.title || 'QR page'
+  const role = person ? doc.role : ''
 
-  if (!isHostedQr(doc.kind)) {
+  if (!isHostedQr(doc.kind) && doc.kind !== 'contact') {
     const target = typeof window === 'undefined' ? '' : qrTarget(doc, window.location.origin)
     return (
       <div className="flex min-h-[420px] flex-col items-center justify-center bg-white px-6 py-10 text-center">
@@ -43,7 +44,7 @@ export function QrCard({ doc }: { doc: QrDoc }) {
         )}
         <h2 className="mt-3 break-words px-2 text-lg font-bold leading-tight">{name}</h2>
         {role && <p className="mt-1 text-xs text-white/80">{role}</p>}
-        {doc.kind === 'vcard' && (
+        {person && (
           <div className="mt-3 flex justify-center gap-2">
             <Round href={doc.phone ? `tel:${doc.phone}` : undefined} icon={<Phone className="size-3.5" />} />
             <Round href={doc.email ? `mailto:${doc.email}` : undefined} icon={<Mail className="size-3.5" />} />
@@ -70,7 +71,7 @@ function Round({ href, icon }: { href?: string; icon: ReactNode }) {
 }
 
 function body(doc: QrDoc, primary: string) {
-  if (doc.kind === 'vcard') {
+  if (doc.kind === 'vcard' || doc.kind === 'contact') {
     return (
       <>
         {doc.phone && <Row icon={<Phone className="size-4" />} label="Phone" value={doc.phone} href={`tel:${doc.phone}`} />}
@@ -145,10 +146,17 @@ function body(doc: QrDoc, primary: string) {
     ))
   }
   if (doc.kind === 'pdf' || doc.kind === 'video' || doc.kind === 'mp3') {
-    const href = safeUrl(doc.url)
+    const href = doc.url.startsWith('data:') ? doc.url : safeUrl(doc.url)
     return href ? (
-      <a href={href} className="inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold text-white" style={{ background: primary }}>
-        Open
+      <a
+        href={href}
+        download={doc.kind === 'pdf' && doc.url.startsWith('data:') ? doc.message || 'file.pdf' : undefined}
+        target={doc.url.startsWith('data:') ? undefined : '_blank'}
+        rel="noreferrer"
+        className="inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold text-white"
+        style={{ background: primary }}
+      >
+        {doc.kind === 'pdf' ? doc.message || 'Open PDF' : 'Open'}
       </a>
     ) : null
   }

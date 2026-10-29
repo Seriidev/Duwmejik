@@ -33,13 +33,13 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
 import QRCode from 'qrcode'
 import { SmoothSelect } from '@/components/ui/SmoothSelect'
 import { QrCard } from '@/features/catalog/QrCard'
 import { cn } from '@/lib/cn'
-import { emptyQrDoc, qrColor, qrReady, qrTarget, type QrDoc, type QrKind } from '@/lib/qrDoc'
+import { createQrId, emptyQrDoc, isHostedQr, qrColor, qrReady, qrTarget, saveQrPage, type QrDoc, type QrKind } from '@/lib/qrDoc'
 
 const types: { id: QrKind; title: string; text: string; icon: LucideIcon }[] = [
   { id: 'pdf', title: 'PDF', text: 'Show a PDF', icon: FileText },
@@ -48,7 +48,7 @@ const types: { id: QrKind; title: string; text: string; icon: LucideIcon }[] = [
   { id: 'business', title: 'Business', text: 'Share information about your business', icon: Briefcase },
   { id: 'video', title: 'Video', text: 'Show a video', icon: Clapperboard },
   { id: 'images', title: 'Images', text: 'Share multiple images', icon: ImageIcon },
-  { id: 'facebook', title: 'Facebook', text: 'Share your Facebook page', icon: Share2 },
+  { id: 'contact', title: 'Contact', text: 'Add to phone contacts', icon: User },
   { id: 'instagram', title: 'Instagram', text: 'Share your Instagram', icon: Camera },
   { id: 'social', title: 'Social Media', text: 'Share your social channels', icon: Link2 },
   { id: 'whatsapp', title: 'WhatsApp', text: 'Get WhatsApp messages', icon: MessageCircle },
@@ -237,7 +237,8 @@ function previewDoc(kind: QrKind): QrDoc {
   if (kind === 'coupon') return { ...base, title: 'Welcome gift', code: 'PRINT10', message: '31 Dec', text: '10% off the first order.' }
   if (kind === 'links') return { ...base, title: 'Useful links', items: [{ label: 'Website', value: 'https://duwmejik.com' }, { label: 'Catalog', value: 'https://duwmejik.com/templates' }] }
   if (kind === 'social') return { ...base, title: 'Duwmejik', name: 'duwmejik', url: 'https://facebook.com/duwmejik', site: 'https://duwmejik.com', phone: '99365000000' }
-  if (kind === 'website' || kind === 'facebook' || kind === 'apps') return { ...base, title: kind === 'website' ? 'Website' : kind === 'facebook' ? 'Facebook' : 'App', url: 'https://duwmejik.com' }
+  if (kind === 'contact') return { ...base, name: 'Seyran', surname: 'Hudayberanov', phone: '+993 65 000000', email: 'seyran@duwmejik.com', company: 'Duwmejik', role: 'Director' }
+  if (kind === 'website' || kind === 'apps') return { ...base, title: kind === 'website' ? 'Website' : 'App', url: 'https://duwmejik.com' }
   if (kind === 'instagram') return { ...base, name: 'duwmejik', title: 'Instagram' }
   if (kind === 'whatsapp') return { ...base, phone: '99365000000', title: 'WhatsApp' }
   if (kind === 'wifi') return { ...base, ssid: 'Duwmejik Guest', password: 'welcome' }
@@ -312,6 +313,8 @@ export function QrGenerator() {
   const [logo, setLogo] = useState('')
   const [src, setSrc] = useState('')
   const [hoverKind, setHoverKind] = useState<QrKind>('pdf')
+  const [pageId, setPageId] = useState('')
+  const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function onPop() {
@@ -320,6 +323,12 @@ export function QrGenerator() {
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
+
+  useEffect(() => {
+    const scroller = rootRef.current?.parentElement
+    if (scroller instanceof HTMLElement) scroller.scrollTop = 0
+    window.scrollTo(0, 0)
+  }, [step])
 
   function goStep(next: number) {
     const safe = Math.min(4, Math.max(1, next))
@@ -333,14 +342,26 @@ export function QrGenerator() {
   }
 
   useEffect(() => {
-    const next = qrTarget(doc, window.location.origin)
+    if (!pageId) setPageId(createQrId())
+  }, [pageId])
+
+  useEffect(() => {
+    if (isHostedQr(doc.kind)) {
+      if (!pageId) return
+      saveQrPage(pageId, doc)
+    }
+    const next = !qrReady(doc)
+      ? ''
+      : isHostedQr(doc.kind)
+        ? `${window.location.origin}/q?d=${pageId}`
+        : qrTarget(doc, window.location.origin)
     if (!next) {
       setSrc('')
       return
     }
     const art = renderQrSvg(next, shape, logo, qrColor(ink, '#111827'), qrColor(paper, '#ffffff'))
     setSrc(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(art.svg)}`)
-  }, [doc, ink, paper, shape, logo])
+  }, [doc, ink, paper, shape, logo, pageId])
 
   function patch(partial: Partial<QrDoc>) {
     setDoc((current) => ({ ...current, ...partial }))
@@ -355,7 +376,7 @@ export function QrGenerator() {
   const selected = types.find((type) => type.id === doc.kind)
 
   return (
-    <div className="flex-1 bg-[#f4f7fb] px-4 py-6 sm:px-6">
+    <div ref={rootRef} className="flex-1 bg-[#f4f7fb] px-4 py-6 sm:px-6">
       <Stepper
         step={step}
         onStep={(next) => {
@@ -375,7 +396,8 @@ export function QrGenerator() {
                     type="button"
                     onMouseEnter={() => setHoverKind(type.id)}
                     onClick={() => {
-                      patch({ kind: type.id })
+                      setDoc({ ...emptyQrDoc(), kind: type.id })
+                      setLogo('')
                       goStep(2)
                       setView('page')
                     }}
@@ -387,10 +409,11 @@ export function QrGenerator() {
                     <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-blue-100 text-blue-600">
                       <type.icon className="size-4" />
                     </span>
-                    <span>
+                    <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold text-slate-900">{type.title}</span>
                       <span className="block text-xs text-slate-400">{type.text}</span>
                     </span>
+                    {type.id === 'contact' && <span className="shrink-0 rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Free</span>}
                   </button>
                 )
               })}
@@ -455,7 +478,7 @@ export function QrGenerator() {
                 <DownloadForm
                   ready={qrReady(doc)}
                   kind={selected?.title ?? 'QR'}
-                  target={typeof window === 'undefined' ? '' : qrTarget(doc, window.location.origin)}
+                  target={typeof window === 'undefined' || !qrReady(doc) ? '' : isHostedQr(doc.kind) ? `${window.location.origin}/q?d=${pageId}` : qrTarget(doc, window.location.origin)}
                   ink={ink}
                   paper={paper}
                   mode={colorMode}
@@ -544,13 +567,15 @@ function ContentForm({
   onPatch: (partial: Partial<QrDoc>) => void
   onItem: (index: number, key: 'label' | 'value' | 'image', value: string, count: number) => void
 }) {
-  const hosted = doc.kind === 'vcard' || doc.kind === 'business' || doc.kind === 'menu' || doc.kind === 'coupon' || doc.kind === 'links' || doc.kind === 'social' || doc.kind === 'images' || doc.kind === 'pdf' || doc.kind === 'video' || doc.kind === 'mp3'
+  const person = doc.kind === 'vcard' || doc.kind === 'contact'
+  const hosted = person || doc.kind === 'business' || doc.kind === 'menu' || doc.kind === 'coupon' || doc.kind === 'links' || doc.kind === 'social' || doc.kind === 'images' || doc.kind === 'pdf' || doc.kind === 'video' || doc.kind === 'mp3'
   return (
     <>
       {hosted && <DesignSection doc={doc} onPatch={onPatch} />}
-      {doc.kind === 'vcard' && <VcardFields doc={doc} onPatch={onPatch} />}
+      {person && <VcardFields doc={doc} onPatch={onPatch} />}
       {doc.kind === 'business' && <BusinessFields doc={doc} onPatch={onPatch} />}
-      {(doc.kind === 'pdf' || doc.kind === 'video' || doc.kind === 'mp3') && (
+      {doc.kind === 'pdf' && <PdfFields doc={doc} onPatch={onPatch} />}
+      {(doc.kind === 'video' || doc.kind === 'mp3') && (
         <Section icon={<FileText className="size-4" />} title="File" text="Add a title and a link.">
           <div className="grid gap-3">
             <Field label="Title" value={doc.title} onChange={(title) => onPatch({ title })} />
@@ -558,7 +583,7 @@ function ContentForm({
           </div>
         </Section>
       )}
-      {(doc.kind === 'website' || doc.kind === 'facebook' || doc.kind === 'apps') && (
+      {(doc.kind === 'website' || doc.kind === 'apps') && (
         <Section icon={<Globe className="size-4" />} title="Link" text="The QR code will open this address.">
           <Field label="URL" value={doc.url} placeholder="https://" icon={Link2} onChange={(url) => onPatch({ url })} />
         </Section>
@@ -620,6 +645,51 @@ function ContentForm({
         <ListFields doc={doc} onPatch={onPatch} onItem={onItem} />
       )}
     </>
+  )
+}
+
+function PdfFields({ doc, onPatch }: { doc: QrDoc; onPatch: (partial: Partial<QrDoc>) => void }) {
+  const [note, setNote] = useState('')
+  const ready = doc.url.startsWith('data:')
+  return (
+    <Section icon={<FileText className="size-4" />} title="PDF" text="Upload the file. The QR code stays a short link to the page.">
+      <div className="grid gap-3">
+        <Field label="Title" value={doc.title} onChange={(title) => onPatch({ title })} />
+        <label className="relative flex h-24 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border border-dashed border-blue-400 bg-blue-50/40 text-sm text-blue-700">
+          <FileText className="size-5" />
+          <span className="max-w-full truncate px-4 font-semibold">{ready ? doc.message || 'PDF uploaded' : 'Choose a PDF'}</span>
+          <span className="text-xs text-slate-400">Up to 1 MB</span>
+          <input
+            type="file"
+            accept="application/pdf,.pdf"
+            className="sr-only"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              if (!file) return
+              if (file.size > 1_000_000) {
+                setNote('This PDF is too large. Choose a file under 1 MB.')
+                return
+              }
+              const reader = new FileReader()
+              reader.onload = () => {
+                const url = String(reader.result || '')
+                if (!url.startsWith('data:')) return
+                setNote('')
+                onPatch({ url, message: file.name })
+              }
+              reader.readAsDataURL(file)
+            }}
+          />
+        </label>
+        {note && <p className="text-sm text-rose-600">{note}</p>}
+        {ready && (
+          <button type="button" onClick={() => onPatch({ url: '', message: '' })} className="justify-self-start text-sm font-medium text-slate-500 hover:text-slate-800">
+            Remove file
+          </button>
+        )}
+      </div>
+    </Section>
   )
 }
 
@@ -698,7 +768,7 @@ function ListFields({
         {rows(doc, count).map((item, index) => (
           <div key={index} className={cn('grid gap-2', doc.kind === 'menu' ? 'grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)]' : 'sm:grid-cols-2')}>
             {doc.kind === 'menu' && (
-              <label className="grid size-11 cursor-pointer place-items-center overflow-hidden rounded-lg border border-dashed border-blue-300 text-blue-600">
+              <label className="relative grid size-11 cursor-pointer place-items-center overflow-hidden rounded-lg border border-dashed border-blue-300 text-blue-600">
                 {item.image ? <img src={item.image} alt="" className="size-full object-cover" /> : <ImagePlus className="size-4" />}
                 <input
                   type="file"
@@ -817,7 +887,7 @@ function DesignForm({
       <div className="mt-4">
         <p className="text-sm font-medium text-slate-700">Logo</p>
         <div className="mt-2 flex items-center gap-3">
-          <label className="grid size-16 cursor-pointer place-items-center overflow-hidden rounded-full border border-dashed border-blue-400 bg-white text-blue-600">
+          <label className="relative grid size-16 cursor-pointer place-items-center overflow-hidden rounded-full border border-dashed border-blue-400 bg-white text-blue-600">
             {logo ? <img src={logo} alt="" className="size-full object-cover" /> : <ImagePlus className="size-5" />}
             <input
               type="file"
@@ -1014,7 +1084,8 @@ function PhotoField({ photo, onPhoto, label = 'Image' }: { photo: string; onPhot
   return (
     <div>
       <p className="text-sm font-semibold text-slate-800">{label}</p>
-      <label className="mt-2 grid size-20 cursor-pointer place-items-center overflow-hidden rounded-xl border border-dashed border-blue-400 text-blue-600">
+      <p className="mt-1 text-xs text-slate-400">Shown on the page. The QR code stays a link.</p>
+      <label className="relative mt-2 grid size-20 cursor-pointer place-items-center overflow-hidden rounded-xl border border-dashed border-blue-400 text-blue-600">
         {photo ? <img src={photo} alt="" className="size-full object-cover" /> : <ImagePlus className="size-6" />}
         <input
           type="file"

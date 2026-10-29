@@ -73,9 +73,11 @@ export function DesignerPage() {
           </span>
           <div className="min-w-0">
             <h1 className="truncate text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">{name}</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              ID <span className="font-semibold text-slate-950">{id}</span>
-            </p>
+            {account?.handle && (
+              <p className="mt-1 text-sm text-slate-500">
+                ID <span className="font-semibold text-slate-950">{account.handle}</span>
+              </p>
+            )}
             <p className="mt-2 text-sm text-slate-500">
               <span className="font-semibold text-slate-950">{compact(followers)}</span> подписчиков
               <span className="px-2 text-slate-300">·</span>

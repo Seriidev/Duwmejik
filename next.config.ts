@@ -3,6 +3,7 @@ import path from 'node:path'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  devIndicators: false,
   outputFileTracingRoot: path.resolve(process.cwd()),
 }
 

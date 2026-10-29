@@ -40,10 +40,6 @@ const copy = {
     second: 'Вторая точка',
     office: 'Адрес офиса',
     note: 'Дизайн и печать · Маркетплейс шаблонов и онлайн-заказ',
-    terms: 'Условия',
-    rules: 'Правила контента',
-    report: 'Пожаловаться',
-    contacts: 'Контакты',
   },
   en: {
     blurb: 'A platform for design, templates, and print. Pick a template, set up the order, and get the finished piece in your area.',
@@ -55,10 +51,6 @@ const copy = {
     second: 'Second point',
     office: 'Office address',
     note: 'Design and print · Template marketplace and online orders',
-    terms: 'Terms',
-    rules: 'Content rules',
-    report: 'Report',
-    contacts: 'Contacts',
   },
   tk: {
     blurb: 'Dizaýn, şablon we çap platformasy. Şablon saýlaň, sargydy düzüň we taýýar materialy öz sebitiňizde alyň.',
@@ -70,10 +62,6 @@ const copy = {
     second: 'Ikinji nokat',
     office: 'Ofisiň salgysy',
     note: 'Dizaýn we çap · Şablon bazary we onlaýn sargyt',
-    terms: 'Şertler',
-    rules: 'Kontent düzgünleri',
-    report: 'Şikaýat',
-    contacts: 'Kontaktlar',
   },
 } as const
 
@@ -81,12 +69,6 @@ export function Footer() {
   const locale = useLocaleStore((state) => state.locale)
   const page = copy[locale]
   const [point, setPoint] = useState(0)
-  const links = [
-    { href: '/#about', label: page.terms },
-    { href: '/templates', label: page.rules },
-    { href: '/#contacts', label: page.report },
-    { href: '/#contacts', label: page.contacts },
-  ]
 
   return (
     <footer className="px-4 pb-6 pt-4 sm:px-6">
@@ -149,15 +131,8 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/20 pt-4 text-xs text-white/75">
+        <div className="mt-8 border-t border-white/20 pt-4 text-center text-xs text-white/75">
           <p>© {new Date().getFullYear()} Duwmejik · {page.note}</p>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            {links.map((link) => (
-              <Link key={link.label} href={link.href} className="hover:text-white">
-                {link.label}
-              </Link>
-            ))}
-          </div>
         </div>
       </div>
       </Reveal>

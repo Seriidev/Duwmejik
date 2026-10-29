@@ -83,13 +83,21 @@ function matches(label: string, query: string) {
   return label.toLowerCase().includes(query)
 }
 
+function handleKey(value: string) {
+  return value.trim().toLowerCase().replace(/^@/, '')
+}
+
 function findDesignerId(
   value: string,
-  accounts: { id: string; role: string }[],
+  accounts: { id: string; role: string; handle?: string }[],
   products: { status: string; authorId: string }[],
 ) {
-  const query = value.trim().toLowerCase()
-  const account = accounts.find((item) => (item.role === 'seller' || item.role === 'admin') && item.id.toLowerCase() === query)
+  const query = handleKey(value)
+  const account = accounts.find((item) => {
+    if (item.role !== 'seller' && item.role !== 'admin') return false
+    const handle = handleKey(item.handle ?? '')
+    return item.id.toLowerCase() === query || (handle.length > 0 && handle === query)
+  })
   if (account) return account.id
   return products.find((item) => item.status === 'published' && item.authorId.toLowerCase() === query)?.authorId
 }
@@ -175,24 +183,32 @@ export function SearchBox({
   )
   const shownDesigners = useMemo(() => {
     if (!query) return []
-    const people = new Map<string, { id: string; name: string; image: string }>()
+    const people = new Map<string, { id: string; name: string; handle: string; image: string }>()
     for (const account of accounts) {
       if (account.role !== 'seller' && account.role !== 'admin') continue
-      people.set(account.id, { id: account.id, name: account.name, image: account.avatar || '/categories/cards.jpg' })
+      people.set(account.id, {
+        id: account.id,
+        name: account.name,
+        handle: account.handle ?? '',
+        image: account.avatar || '/categories/cards.jpg',
+      })
     }
     for (const product of products) {
       if (product.status !== 'published' || people.has(product.authorId)) continue
       people.set(product.authorId, {
         id: product.authorId,
         name: product.author,
+        handle: '',
         image: product.image || '/categories/cards.jpg',
       })
     }
+    const typed = query.replace(/^@/, '')
     return [...people.values()]
       .filter((person) => {
         const id = person.id.toLowerCase()
         const name = person.name.toLowerCase()
-        return id === query || id.includes(query) || name.includes(query)
+        const handle = handleKey(person.handle)
+        return id === query || id.includes(query) || name.includes(query) || (handle.length > 0 && (handle === typed || handle.includes(typed)))
       })
       .slice(0, 4)
   }, [query, accounts, products])

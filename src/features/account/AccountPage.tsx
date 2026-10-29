@@ -17,9 +17,10 @@ import { ORDER_STATUS_LABEL } from '@/data/labels'
 import { PreviewModal } from '@/features/catalog/PreviewModal'
 import { SERVICES, TARIFFS } from '@/features/orders/pricing'
 import { cn } from '@/lib/cn'
-import { formatDate, formatPrice } from '@/lib/format'
+import { formatDate, formatPrice, plural } from '@/lib/format'
 import { useAccountStore } from '@/store/useAccountStore'
-import { useAuthStore } from '@/store/useAuthStore'
+import { normalizeHandle, useAuthStore } from '@/store/useAuthStore'
+import { followerCount, useFollowStore } from '@/store/useFollowStore'
 import { useCatalogStore } from '@/store/useCatalogStore'
 import { likeCount, useEngagementStore } from '@/store/useEngagementStore'
 import type { CustomOrder } from '@/types'
@@ -72,6 +73,8 @@ function readAvatar(file: File) {
 export function AccountPage() {
   const router = useRouter()
   const user = useAuthStore((state) => state.user)
+  const accounts = useAuthStore((state) => state.users)
+  const following = useFollowStore((state) => state.following)
   const logout = useAuthStore((state) => state.logout)
   const updateProfile = useAuthStore((state) => state.updateProfile)
   const changePassword = useAuthStore((state) => state.changePassword)
@@ -90,6 +93,7 @@ export function AccountPage() {
   const [first, setFirst] = useState('')
   const [last, setLast] = useState('')
   const [email, setEmail] = useState('')
+  const [handle, setHandle] = useState('')
   const [phone, setPhone] = useState('')
   const [city, setCity] = useState('')
   const [company, setCompany] = useState('')
@@ -116,11 +120,12 @@ export function AccountPage() {
     setFirst(parts.first)
     setLast(parts.last)
     setEmail(user.email)
+    setHandle(user.handle || (user.role === 'seller' || user.role === 'admin' ? '@' : ''))
     setPhone(user.phone)
     setCity(regions.includes(user.city) ? user.city : '')
     setCompany(user.company)
     setAddress(user.address)
-  }, [user?.id, user?.name, user?.email, user?.phone, user?.city, user?.company, user?.address])
+  }, [user?.id, user?.name, user?.email, user?.handle, user?.role, user?.phone, user?.city, user?.company, user?.address])
 
   if (!user) {
     return (
@@ -147,6 +152,15 @@ export function AccountPage() {
     .filter((item) => item != null)
   const parts = splitName(user.name)
   const initials = `${parts.first[0] ?? ''}${parts.last[0] ?? ''}`.toUpperCase() || 'A'
+  const designer = user.role === 'seller' || user.role === 'admin'
+  const followed = (following[user.id] ?? []).flatMap((id) => {
+    const name = accounts.find((item) => item.id === id)?.name || products.find((item) => item.authorId === id)?.author
+    return name ? [{ id, name }] : []
+  })
+  const followers = followerCount(following, user.id)
+  const viewTotal = products
+    .filter((item) => item.authorId === user.id)
+    .reduce((sum, item) => sum + (views[item.id] ?? 0) + (item.status === 'published' ? Math.round(item.downloads * 0.18) : 0), 0)
 
   async function onAvatar(file: File | undefined) {
     if (!file) return
@@ -163,9 +177,11 @@ export function AccountPage() {
   function saveProfile(event: FormEvent) {
     event.preventDefault()
     setProfileNote('')
+    const designer = user.role === 'seller' || user.role === 'admin'
     const message = updateProfile({
       name: `${first.trim()} ${last.trim()}`.trim(),
       email,
+      ...(designer ? { handle } : {}),
       phone: phone.trim(),
       city: city.trim(),
       company: company.trim(),
@@ -224,10 +240,36 @@ export function AccountPage() {
             <h1 className="truncate text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
               {[parts.first, parts.last].filter(Boolean).join(' ')}
             </h1>
-            <p className="mt-1 truncate text-slate-500">{user.email}</p>
-            {(user.role === 'seller' || user.role === 'admin') && (
+            {designer ? (
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                <span className="font-semibold text-slate-950">{followers}</span>{' '}
+                {plural(followers, 'подписчик', 'подписчика', 'подписчиков')}
+                <span className="px-2 text-slate-300">·</span>
+                {followed.length === 0 ? (
+                  'Подписок нет'
+                ) : (
+                  <>
+                    Подписки:{' '}
+                    {followed.map((person, index) => (
+                      <span key={person.id}>
+                        {index > 0 ? ', ' : null}
+                        <Link href={`/designer/${person.id}`} className="font-medium text-slate-950 hover:text-blue-600">
+                          {person.name}
+                        </Link>
+                      </span>
+                    ))}
+                  </>
+                )}
+                <span className="px-2 text-slate-300">·</span>
+                <span className="font-semibold text-slate-950">{viewTotal}</span>{' '}
+                {plural(viewTotal, 'просмотр', 'просмотра', 'просмотров')}
+              </p>
+            ) : (
+              <p className="mt-1 truncate text-slate-500">{user.email}</p>
+            )}
+            {designer && user.handle && (
               <p className="mt-1 text-sm text-slate-500">
-                ID <span className="font-semibold text-slate-950">{user.id}</span>
+                ID <span className="font-semibold text-slate-950">{user.handle}</span>
               </p>
             )}
           </div>
@@ -367,6 +409,20 @@ export function AccountPage() {
               <Input label="Фамилия" value={last} onChange={(event) => setLast(event.target.value)} />
             </div>
             <Input label="Почта" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+            {(user.role === 'seller' || user.role === 'admin') && (
+              <Input
+                id="designer-handle"
+                label="ID"
+                required
+                value={handle.startsWith('@') ? handle : `@${handle}`}
+                placeholder="@studio"
+                autoComplete="off"
+                spellCheck={false}
+                pattern="@[A-Za-z0-9_]{2,24}"
+                title="ID начинается с @. Дальше латинские буквы, цифры или _"
+                onChange={(event) => setHandle(normalizeHandle(event.target.value) || '@')}
+              />
+            )}
             <Input label="Телефон" value={phone} onChange={(event) => setPhone(event.target.value)} />
             <Select
               label="Регион"
@@ -440,15 +496,19 @@ export function AccountPage() {
             <p className="text-sm leading-6 text-slate-500">
               Загружайте шаблоны и смотрите, какие работы на проверке, одобрены или отклонены.
             </p>
-            {(user.role === 'seller' || user.role === 'admin') && (
+            {(user.role === 'seller' || user.role === 'admin') && user.handle && (
               <p className="text-sm text-slate-500">
-                ID дизайнера <span className="font-semibold text-slate-950">{user.id}</span>
+                ID дизайнера <span className="font-semibold text-slate-950">{user.handle}</span>
               </p>
             )}
             {user.role === 'seller' || user.role === 'admin' ? (
-              <Link href="/seller" className="inline-flex h-11 w-fit items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
-                Открыть кабинет дизайнера
-              </Link>
+              /^@[A-Za-z0-9_]{2,24}$/.test(user.handle) ? (
+                <Link href="/seller" className="inline-flex h-11 w-fit items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
+                  Открыть кабинет дизайнера
+                </Link>
+              ) : (
+                <p className="text-sm text-rose-600">Сохраните ID. Без него кабинет не откроется.</p>
+              )
             ) : (
               <button
                 type="button"
@@ -501,7 +561,12 @@ export function AccountPage() {
             onClick={() => {
               setRole(user.id, 'seller')
               setDesignerOpen(false)
-              router.push('/seller')
+              if (/^@[A-Za-z0-9_]{2,24}$/.test(user.handle)) {
+                router.push('/seller')
+                return
+              }
+              setTab('settings')
+              window.setTimeout(() => document.getElementById('designer-handle')?.focus(), 50)
             }}
             className="h-11 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           >

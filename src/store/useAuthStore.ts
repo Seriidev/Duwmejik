@@ -10,7 +10,7 @@ interface AuthState {
   logout: () => void
   register: (name: string, email: string, password: string) => string | null
   setRole: (id: string, role: Role) => void
-  updateProfile: (patch: Partial<Pick<SessionUser, 'name' | 'email' | 'phone' | 'company' | 'city' | 'address' | 'avatar'>>) => string | null
+  updateProfile: (patch: Partial<Pick<SessionUser, 'name' | 'email' | 'phone' | 'company' | 'city' | 'address' | 'avatar' | 'handle'>>) => string | null
   changePassword: (currentPassword: string, nextPassword: string) => string | null
 }
 
@@ -25,6 +25,7 @@ const seedUsers: AccountUser[] = [
     company: '',
     city: 'Ашхабад',
     address: '',
+    handle: '',
   },
   {
     id: 'u-seller',
@@ -36,6 +37,7 @@ const seedUsers: AccountUser[] = [
     company: 'Студия Норд',
     city: 'Ашхабад',
     address: '',
+    handle: '@nord',
   },
   {
     id: 'u-admin',
@@ -47,20 +49,35 @@ const seedUsers: AccountUser[] = [
     company: '',
     city: 'Ашхабад',
     address: '',
+    handle: '@admin',
   },
 ]
 
+export function normalizeHandle(value: string) {
+  const body = value.trim().replace(/\s/g, '').replace(/@/g, '')
+  return body ? `@${body}` : ''
+}
+
+function withHandle(account: AccountUser): AccountUser {
+  if (account.handle) return account
+  if (account.id === 'u-seller') return { ...account, handle: '@nord' }
+  if (account.id === 'u-admin') return { ...account, handle: '@admin' }
+  return { ...account, handle: '' }
+}
+
 function toSession(account: AccountUser): SessionUser {
+  const ready = withHandle(account)
   return {
-    id: account.id,
-    name: account.name,
-    email: account.email,
-    role: account.role,
-    phone: account.phone ?? '',
-    company: account.company ?? '',
-    city: account.city ?? '',
-    address: account.address ?? '',
-    avatar: account.avatar ?? '',
+    id: ready.id,
+    name: ready.name,
+    email: ready.email,
+    role: ready.role,
+    phone: ready.phone ?? '',
+    company: ready.company ?? '',
+    city: ready.city ?? '',
+    address: ready.address ?? '',
+    handle: ready.handle ?? '',
+    avatar: ready.avatar ?? '',
   }
 }
 
@@ -90,6 +107,7 @@ export const useAuthStore = create<AuthState>()(
           company: '',
           city: 'Ашхабад',
           address: '',
+          handle: '',
         }
         set({ users: [...get().users, account], user: toSession(account) })
         return null
@@ -104,7 +122,16 @@ export const useAuthStore = create<AuthState>()(
         }
         const name = patch.name?.trim()
         if (patch.name !== undefined && !name) return 'Укажите имя'
-        const next = { ...patch, ...(email ? { email } : {}), ...(name ? { name } : {}) }
+        let handle: string | undefined
+        if (patch.handle !== undefined) {
+          handle = normalizeHandle(patch.handle)
+          if (!/^@[A-Za-z0-9_]{2,24}$/.test(handle)) return 'ID начинается с @. Дальше латинские буквы, цифры или _'
+          const taken = get().users.some(
+            (item) => item.id !== current.id && (item.handle ?? '').toLowerCase() === handle!.toLowerCase(),
+          )
+          if (taken) return 'Такой ID уже есть'
+        }
+        const next = { ...patch, ...(email ? { email } : {}), ...(name ? { name } : {}), ...(handle ? { handle } : {}) }
         const users = get().users.map((item) => (item.id === current.id ? { ...item, ...next } : item))
         set({ users, user: { ...current, ...next } })
         return null
@@ -129,6 +156,14 @@ export const useAuthStore = create<AuthState>()(
         set({ users, user: nextUser })
       },
     }),
-    { name: 'duwmejik-auth' },
+    {
+      name: 'duwmejik-auth',
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<AuthState>
+        const users = (saved.users ?? current.users).map((item) => withHandle(item))
+        const user = saved.user ? toSession(users.find((item) => item.id === saved.user?.id) ?? { ...saved.user, password: '' }) : null
+        return { ...current, ...saved, users, user }
+      },
+    },
   ),
 )
