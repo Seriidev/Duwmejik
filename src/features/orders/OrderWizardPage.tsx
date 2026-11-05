@@ -220,8 +220,8 @@ export function OrderWizardPage({
 
   return (
     <Shell>
-      <div className="grid items-start gap-3 lg:grid-cols-[228px_minmax(0,1fr)]">
-        <div className="grid gap-1.5">
+      <div className="grid items-stretch gap-3 lg:grid-cols-[228px_minmax(0,1fr)]">
+        <div className="grid content-stretch gap-1.5 lg:h-full lg:grid-rows-7">
           {SERVICE_ORDER.filter((id) => id !== 'laser').map((id) => (
             <ServiceCard
               key={id}
@@ -319,21 +319,17 @@ export function OrderWizardPage({
               })}
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:contents">
-          <Field label="Описание задачи" className="lg:col-start-1 lg:row-start-7">
+          <Field label="Описание задачи" className="lg:col-span-2 lg:col-start-1 lg:row-start-7 lg:h-full">
             <textarea
-              className="h-[152px] w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none"
+              className="h-[152px] w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none lg:h-full lg:min-h-[152px]"
               placeholder="Опишите макет, тираж и пожелания"
               value={comment}
               onChange={(event) => setComment(event.target.value)}
             />
           </Field>
-          <div className="lg:col-start-2 lg:row-start-7">
+          <div className="flex flex-col gap-2 lg:col-start-3 lg:row-start-5 lg:row-end-8 lg:min-h-0">
             <UploadBox files={files} onFiles={setFiles} />
-          </div>
-          </div>
-          <div className="flex flex-col items-end gap-2 lg:col-start-3 lg:row-start-5 lg:items-stretch">
-            {error && <p className="text-sm text-red-600 lg:text-right">{error}</p>}
+            {error && <p className="text-sm text-red-600">{error}</p>}
             <button type="button" onClick={submit} className="h-11 rounded-xl bg-brand px-5 text-sm font-semibold text-white lg:w-full">
               Отправить заказ
             </button>
@@ -355,9 +351,9 @@ function Field({ label, children, className }: { label: string; children: ReactN
 
 function UploadBox({ files, onFiles }: { files: string[]; onFiles: (files: string[]) => void }) {
   return (
-    <div className="grid gap-1.5 text-sm text-slate-500">
+    <div className="flex min-h-0 flex-1 flex-col gap-1.5 text-sm text-slate-500">
       Загрузить макет
-      <label className="flex h-[152px] cursor-pointer flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-center">
+      <label className="flex min-h-[152px] flex-1 cursor-pointer flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-center">
         <span className="grid size-10 place-items-center rounded-full bg-slate-100 text-slate-500">
           <Upload className="size-5" />
         </span>
@@ -393,7 +389,7 @@ function ServiceCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'relative flex items-start gap-3 rounded-2xl border px-3 py-2.5 text-left',
+        'relative flex h-full items-start gap-3 rounded-2xl border px-3 py-2.5 text-left',
         active ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white',
       )}
     >

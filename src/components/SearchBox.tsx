@@ -108,6 +108,7 @@ export function SearchBox({
   large = false,
   showFilters = false,
   placeholder = 'Искать что угодно…',
+  hints,
   appearance = 'default',
   submitLabel = 'Поиск',
   onPick,
@@ -118,6 +119,7 @@ export function SearchBox({
   large?: boolean
   showFilters?: boolean
   placeholder?: string
+  hints?: readonly string[]
   appearance?: 'default' | 'hero' | 'bar'
   submitLabel?: string
 }) {
@@ -136,6 +138,8 @@ export function SearchBox({
   const panelRef = useRef<HTMLDivElement | null>(null)
   const debounced = useDebouncedValue(text, 200)
   const title = headings[locale]
+  const hintKey = hints?.join('|') ?? ''
+  const [typedHint, setTypedHint] = useState('')
 
   if (value !== undefined && external !== tracked) {
     setTracked(external)
@@ -150,6 +154,46 @@ export function SearchBox({
     const left = Math.min(Math.max(16, rect.left + rect.width / 2 - width / 2), window.innerWidth - width - 16)
     setBox({ top: rect.bottom + 10, left, width })
   }
+
+  useEffect(() => {
+    if (!hintKey) return
+    const words = hintKey.split('|').filter(Boolean)
+    if (words.length === 0) return
+    let word = 0
+    let count = 0
+    let deleting = false
+    let timer = 0
+    let stopped = false
+    const tick = () => {
+      if (stopped) return
+      const current = words[word] ?? ''
+      if (!deleting) {
+        count += 1
+        setTypedHint(current.slice(0, count))
+        if (count >= current.length) {
+          deleting = true
+          timer = window.setTimeout(tick, 900)
+          return
+        }
+        timer = window.setTimeout(tick, 90)
+        return
+      }
+      count -= 1
+      setTypedHint(current.slice(0, Math.max(0, count)))
+      if (count <= 0) {
+        deleting = false
+        word = (word + 1) % words.length
+        timer = window.setTimeout(tick, 280)
+        return
+      }
+      timer = window.setTimeout(tick, 45)
+    }
+    timer = window.setTimeout(tick, 400)
+    return () => {
+      stopped = true
+      window.clearTimeout(timer)
+    }
+  }, [hintKey])
 
   useEffect(() => {
     const onPointer = (event: MouseEvent) => {
@@ -259,6 +303,9 @@ export function SearchBox({
     else router.push(hit?.href ?? `/templates?q=${encodeURIComponent(clean)}`)
   }
 
+  const hintPrefix = placeholder.includes(':') ? `${placeholder.slice(0, placeholder.indexOf(':') + 1)} ` : ''
+  const showTypedHint = Boolean(hintKey) && text.length === 0
+
   const panel =
     open && box && typeof document !== 'undefined'
       ? createPortal(
@@ -342,7 +389,7 @@ export function SearchBox({
         <input
           id="site-search"
           value={text}
-          placeholder={placeholder}
+          placeholder={showTypedHint ? '' : placeholder}
           onChange={(event) => {
             setText(event.target.value)
             setOpen(true)
@@ -364,6 +411,20 @@ export function SearchBox({
                   ),
           )}
         />
+        {showTypedHint && (
+          <span
+            aria-hidden
+            className={cn(
+              'pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center truncate text-slate-400',
+              large ? 'left-14 right-6 text-base' : 'left-11 text-sm',
+              appearance === 'hero' || appearance === 'bar' ? 'right-28' : !large && 'right-4',
+            )}
+          >
+            {hintPrefix}
+            {typedHint}
+            <span className="ml-0.5 inline-block h-[1.05em] w-px shrink-0 bg-slate-400" />
+          </span>
+        )}
         {(appearance === 'hero' || appearance === 'bar' || (large && showFilters)) && (
           <button
             type="submit"

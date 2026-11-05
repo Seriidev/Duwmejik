@@ -2,7 +2,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  CreditCard,
   Diamond,
   Layers,
   Minus,
@@ -19,6 +18,7 @@ import cardPreview from '@/assets/card-preview.jpg'
 import logoBell from '@/assets/logo-bell.png'
 import { SmoothSelect } from '@/components/ui/SmoothSelect'
 import { Modal } from '@/components/ui/Modal'
+import { SavedNotice, useSavedNotice } from '@/components/ui/SavedNotice'
 import { cn } from '@/lib/cn'
 import { useAccountStore } from '@/store/useAccountStore'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -93,6 +93,8 @@ export function PreviewModal({
   const [index, setIndex] = useState(0)
   const [quantity, setQuantity] = useState(minQuantity)
   const [choices, setChoices] = useState<Record<string, string>>({})
+  const [showBadge, setShowBadge] = useState(false)
+  const savedNotice = useSavedNotice()
   const saved = Boolean(product && favorites?.includes(product.id))
   const popular = Boolean(product && (product.downloads >= 600 || product.rating >= 4.8))
 
@@ -100,6 +102,7 @@ export function PreviewModal({
     setIndex(0)
     setQuantity(minQuantity)
     setChoices({})
+    setShowBadge(false)
     if (!product) return
     const timer = window.setInterval(() => {
       setIndex((current) => (current + 1) % slides.length)
@@ -113,7 +116,9 @@ export function PreviewModal({
       router.push('/login')
       return
     }
+    const already = favorites?.includes(product.id)
     toggleFavorite(user.id, product.id)
+    if (!already) savedNotice.show()
   }
 
   const specs = product ? specsFor(product) : []
@@ -138,15 +143,27 @@ export function PreviewModal({
                   )}
                 />
               ))}
-              <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-800 shadow-sm">
-                <CreditCard className="size-3.5" />
-                {category?.title ?? 'Макет'}
-              </span>
               {popular && (
-                <span className="absolute top-3 right-3 inline-flex max-w-[calc(100%-5.5rem)] items-center gap-1.5 rounded-full bg-[#146c43] px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm sm:text-xs">
-                  <img src={logoBell.src} alt="" className="size-5 shrink-0 object-contain" />
-                  Лучший дизайн Duwmejik
-                </span>
+                <button
+                  type="button"
+                  aria-expanded={showBadge}
+                  aria-label="Лучший дизайн Duwmejik"
+                  onClick={() => setShowBadge((open) => !open)}
+                  className="group absolute top-3 right-3 flex items-center rounded-full bg-[#146c43] text-white shadow-sm"
+                >
+                  <span
+                    className={cn(
+                      'max-w-0 overflow-hidden whitespace-nowrap text-xs font-semibold opacity-0 transition-all duration-200',
+                      'sm:group-hover:max-w-52 sm:group-hover:pr-1 sm:group-hover:pl-3 sm:group-hover:opacity-100',
+                      showBadge && 'max-w-52 pr-1 pl-3 opacity-100',
+                    )}
+                  >
+                    Лучший дизайн Duwmejik
+                  </span>
+                  <span className="grid size-9 shrink-0 place-items-center">
+                    <img src={logoBell.src} alt="" className="size-6 object-contain" />
+                  </span>
+                </button>
               )}
               <button
                 type="button"
@@ -278,6 +295,7 @@ export function PreviewModal({
           </div>
         </div>
       )}
+      <SavedNotice open={savedNotice.open} />
     </Modal>
   )
 }

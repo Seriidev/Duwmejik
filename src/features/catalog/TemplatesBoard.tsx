@@ -6,6 +6,7 @@ import cardPreview from '@/assets/card-preview.jpg'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { SideMenu } from '@/components/layout/SideMenu'
+import { SavedNotice, useSavedNotice } from '@/components/ui/SavedNotice'
 import { SearchBox } from '@/components/SearchBox'
 import { isPrintWork } from '@/data/catalog'
 import { PreviewModal } from '@/features/catalog/PreviewModal'
@@ -93,6 +94,7 @@ export function TemplatesBoard() {
   const toggleLike = useEngagementStore((state) => state.toggleLike)
   const theme = useThemeStore((state) => state.theme)
   const [menuOpen, setMenuOpen] = useState(false)
+  const savedNotice = useSavedNotice()
 
   useEffect(() => {
     const wide = window.matchMedia('(min-width: 1024px)')
@@ -463,7 +465,9 @@ export function TemplatesBoard() {
                           aria-pressed={saved}
                           onClick={() => {
                             if (!requireUser() || !user) return
+                            const already = favorites?.includes(product.id)
                             toggleFavorite(user.id, product.id)
+                            if (!already) savedNotice.show()
                           }}
                           className="pointer-events-none absolute right-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
                         >
@@ -520,6 +524,7 @@ export function TemplatesBoard() {
             : undefined
         }
       />
+      <SavedNotice open={savedNotice.open} />
     </div>
   )
 }

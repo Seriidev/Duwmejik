@@ -195,6 +195,7 @@ const copy = {
   ru: {
     hero: 'Выберите шаблон — мы подготовим макет и напечатаем',
     search: 'Поиск: визитки, флаеры, баннеры, футболки...',
+    searchHints: ['визитки', 'флаеры', 'баннеры', 'футболки'],
     find: 'Найти',
     allTemplates: 'Выбрать шаблон',
     orderPrint: 'Заказать печать',
@@ -269,6 +270,7 @@ const copy = {
   en: {
     hero: 'Pick a template — we will prepare the file and print it',
     search: 'Search: cards, flyers, banners, t-shirts...',
+    searchHints: ['cards', 'flyers', 'banners', 't-shirts'],
     find: 'Search',
     allTemplates: 'Choose a template',
     orderPrint: 'Order print',
@@ -343,6 +345,7 @@ const copy = {
   tk: {
     hero: 'Şablon saýlaň — maketi taýýarlap, çap ederis',
     search: 'Gözleg: wizitka, flaer, banner...',
+    searchHints: ['wizitka', 'flaer', 'banner'],
     find: 'Gözle',
     allTemplates: 'Şablon saýla',
     orderPrint: 'Çap sargyt et',
@@ -453,7 +456,7 @@ export function HomePage() {
               {page.hero}
             </h1>
             <div className="mx-auto mt-9 w-full max-w-[540px]">
-              <SearchBox appearance="hero" placeholder={page.search} submitLabel={page.find} />
+              <SearchBox appearance="hero" placeholder={page.search} hints={page.searchHints} submitLabel={page.find} />
             </div>
             <div className="mx-auto mt-5 flex w-full max-w-[540px] justify-center gap-2 sm:w-auto sm:max-w-none sm:gap-3">
               <Link href="/templates" className="inline-flex h-10 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full bg-brand px-3 text-xs font-semibold text-white sm:flex-none sm:px-5 sm:text-sm">
@@ -535,7 +538,7 @@ export function HomePage() {
                   </div>
                   <Link href={`/templates?section=orders&product=${product.id}`} className="mx-1.5 mb-1 mt-3 inline-flex h-9 w-fit items-center rounded-full bg-neutral-950 px-4 text-sm font-semibold text-white">
                     {page.order}
-                  </Link>
+          </Link>
                 </article>
               ))}
             </div>
@@ -562,7 +565,7 @@ export function HomePage() {
               <h2 className="text-[24px] font-semibold tracking-tight text-slate-950 sm:text-[28px]">{page.aboutTitle}</h2>
               <p className="mt-4 text-base font-semibold text-slate-900">{page.aboutLead}</p>
               <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">{page.aboutText}</p>
-            </div>
+              </div>
             <Link href="/templates" className="flex min-h-[148px] flex-col justify-between rounded-[22px] bg-brand p-5 text-white">
               <p className="text-[32px] font-bold leading-none">100+</p>
               <p className="text-sm text-white/80">{page.statTemplates}</p>

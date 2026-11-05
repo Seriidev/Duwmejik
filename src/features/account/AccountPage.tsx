@@ -10,6 +10,7 @@ import logoBell from '@/assets/logo-bell.png'
 import { Gate } from '@/components/Gate'
 import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
+import { SavedNotice, useSavedNotice } from '@/components/ui/SavedNotice'
 import { buttonClass } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { isPrintWork } from '@/data/catalog'
@@ -73,7 +74,6 @@ function readAvatar(file: File) {
 export function AccountPage() {
   const router = useRouter()
   const user = useAuthStore((state) => state.user)
-  const accounts = useAuthStore((state) => state.users)
   const following = useFollowStore((state) => state.following)
   const logout = useAuthStore((state) => state.logout)
   const updateProfile = useAuthStore((state) => state.updateProfile)
@@ -105,6 +105,7 @@ export function AccountPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordNote, setPasswordNote] = useState('')
   const [passwordError, setPasswordError] = useState('')
+  const savedNotice = useSavedNotice()
   const [designerOpen, setDesignerOpen] = useState(false)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [acceptPrivacy, setAcceptPrivacy] = useState(false)
@@ -153,10 +154,7 @@ export function AccountPage() {
   const parts = splitName(user.name)
   const initials = `${parts.first[0] ?? ''}${parts.last[0] ?? ''}`.toUpperCase() || 'A'
   const designer = user.role === 'seller' || user.role === 'admin'
-  const followed = (following[user.id] ?? []).flatMap((id) => {
-    const name = accounts.find((item) => item.id === id)?.name || products.find((item) => item.authorId === id)?.author
-    return name ? [{ id, name }] : []
-  })
+  const subscriptions = (following[user.id] ?? []).length
   const followers = followerCount(following, user.id)
   const viewTotal = products
     .filter((item) => item.authorId === user.id)
@@ -194,6 +192,7 @@ export function AccountPage() {
     }
     setProfileError('')
     setProfileNote('Сохранено')
+    savedNotice.show()
   }
 
   function savePassword(event: FormEvent) {
@@ -246,21 +245,8 @@ export function AccountPage() {
                 <span className="font-semibold text-slate-950">{followers}</span>{' '}
                 {plural(followers, 'подписчик', 'подписчика', 'подписчиков')}
                 <span className="px-2 text-slate-300">·</span>
-                {followed.length === 0 ? (
-                  'Подписок нет'
-                ) : (
-                  <>
-                    Подписки:{' '}
-                    {followed.map((person, index) => (
-                      <span key={person.id}>
-                        {index > 0 ? ', ' : null}
-                        <Link href={`/designer/${person.id}`} className="font-medium text-slate-950 hover:text-blue-600">
-                          {person.name}
-                        </Link>
-                      </span>
-                    ))}
-                  </>
-                )}
+                <span className="font-semibold text-slate-950">{subscriptions}</span>{' '}
+                {plural(subscriptions, 'подписка', 'подписки', 'подписок')}
                 <span className="px-2 text-slate-300">·</span>
                 <span className="font-semibold text-slate-950">{viewTotal}</span>{' '}
                 {plural(viewTotal, 'просмотр', 'просмотра', 'просмотров')}
@@ -577,6 +563,7 @@ export function AccountPage() {
       </Modal>
 
       <PreviewModal product={preview} onClose={() => setPreviewId(null)} />
+      <SavedNotice open={savedNotice.open} />
       </div>
     </div>
   )

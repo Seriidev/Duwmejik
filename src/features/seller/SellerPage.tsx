@@ -10,6 +10,7 @@ import { SearchBox } from '@/components/SearchBox'
 import { SideMenu } from '@/components/layout/SideMenu'
 import { buttonClass } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { SavedNotice, useSavedNotice } from '@/components/ui/SavedNotice'
 import { QrGenerator } from '@/features/catalog/QrGenerator'
 import { NoticeBoard } from '@/features/seller/NoticeBoard'
 import { UploadWork, type WorkSubmission } from '@/features/seller/UploadWork'
@@ -360,6 +361,7 @@ function TemplateCards({
   const addView = useEngagementStore((state) => state.addView)
   const toggleLike = useEngagementStore((state) => state.toggleLike)
   const [open, setOpen] = useState<Product | null>(null)
+  const savedNotice = useSavedNotice()
   const [alike, setAlike] = useState<string | null>(null)
   const [seenSearch, setSeenSearch] = useState(searchTick)
   if (searchTick !== seenSearch) {
@@ -425,7 +427,9 @@ function TemplateCards({
                   aria-pressed={saved}
                   onClick={() => {
                     if (!user) return
+                    const already = favorites?.includes(product.id)
                     toggleFavorite(user.id, product.id)
+                    if (!already) savedNotice.show()
                   }}
                   className="pointer-events-none absolute right-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
                 >
@@ -481,6 +485,7 @@ function TemplateCards({
           </div>
         )}
       </Modal>
+      <SavedNotice open={savedNotice.open} />
     </>
   )
 }
