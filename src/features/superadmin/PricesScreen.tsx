@@ -1,7 +1,7 @@
 'use client'
 
 import { Check, Download, Pencil, Plus, Search, Upload } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 import { formatAmount, salePrice } from '@/lib/superadmin/money'
 import { parseMaterialFile } from '@/lib/superadmin/parseMaterials'
@@ -293,7 +293,7 @@ export function PricesScreen() {
   )
 }
 
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: string }) {
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button type="button" onClick={onClick} className={cn('h-9 rounded-full px-3 text-sm font-medium', active ? 'bg-[#6d3ef2] text-white' : 'text-[#5b6472] hover:bg-white')}>
       {children}

@@ -174,7 +174,7 @@ export function AccountPage() {
   const works = products.filter((item) => item.authorId === user.id && item.status === 'published')
   const parts = splitName(user.name)
   const initials = `${parts.first[0] ?? ''}${parts.last[0] ?? ''}`.toUpperCase() || 'A'
-  const designer = user.role === 'seller' || user.role === 'admin'
+  const designer = user.role === 'seller'
   const username = user.handle ? (user.handle.startsWith('@') ? user.handle : `@${user.handle}`) : ''
   const followingPeople = accountsByIds(users, following[user.id] ?? [])
   const followerPeople = accountsByIds(
@@ -191,6 +191,7 @@ export function AccountPage() {
 
   function confirmDelete(event: FormEvent) {
     event.preventDefault()
+    if (!user) return
     const phrase = (username || user.email).trim()
     if (deletePhrase.trim() !== phrase) return
     removeByAuthor(user.id)
@@ -217,7 +218,7 @@ export function AccountPage() {
     event.preventDefault()
     if (!user) return
     setProfileNote('')
-    const designer = user.role === 'seller' || user.role === 'admin'
+    const designer = user.role === 'seller'
     const message = updateProfile({
       name: `${first.trim()} ${last.trim()}`.trim(),
       email,
@@ -501,7 +502,7 @@ export function AccountPage() {
               <Input label="Фамилия" value={last} onChange={(event) => setLast(event.target.value)} />
             </div>
             <Input label="Почта" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
-            {(user.role === 'seller' || user.role === 'admin') && (
+            {user.role === 'seller' && (
               <Input
                 id="designer-handle"
                 label="Имя пользователя"
@@ -583,13 +584,12 @@ export function AccountPage() {
             </button>
           </form>
 
-          {user.role !== 'superadmin' && (
           <div className="grid gap-3 border-t border-slate-200 pt-8">
             <h2 className="text-lg font-semibold text-slate-950">Дизайнер</h2>
             <p className="text-sm leading-6 text-slate-500">
               Загружайте шаблоны и смотрите, какие работы на проверке, одобрены или отклонены.
             </p>
-            {user.role === 'seller' || user.role === 'admin' ? (
+            {user.role === 'seller' ? (
               /^@[A-Za-z0-9_]{2,24}$/.test(user.handle) ? (
                 <Link href="/seller" className="inline-flex h-11 w-fit items-center rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:brightness-110">
                   Открыть кабинет дизайнера
@@ -619,7 +619,6 @@ export function AccountPage() {
               </>
             )}
           </div>
-          )}
 
           <div className="flex flex-wrap gap-3">
             <button

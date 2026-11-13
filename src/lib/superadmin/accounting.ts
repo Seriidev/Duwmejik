@@ -1,4 +1,4 @@
-import { addDays, inSpan, startOfDay } from './reports.ts'
+import { addDays, inSpan, startOfDay } from './reports'
 
 export type BooksRange = 'day' | 'week' | 'month' | 'year'
 

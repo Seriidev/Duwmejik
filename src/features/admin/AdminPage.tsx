@@ -128,7 +128,7 @@ export function AdminPage({ seat }: { seat?: 'u-admin' | 'u-workshop' }) {
     return null
   }
 
-  function decideProduct(product: Product, verdict: NoticeVerdict, categoryId: string, message: string) {
+  function decideProduct(product: Product, verdict: 'accepted' | 'rejected', categoryId: string, message: string) {
     const accepted = verdict === 'accepted'
     const reason = message.trim()
     if (accepted && !categoryId) return false
@@ -145,7 +145,6 @@ export function AdminPage({ seat }: { seat?: 'u-admin' | 'u-workshop' }) {
       verdict,
       message: accepted ? reason || verdictMessage(product.title, verdict) : reason,
     })
-    return true
   }
 
   if (seat && user?.id !== seat) return <AdminLogin seat={seat} />
@@ -491,7 +490,9 @@ function OrdersBoard({ orders, onOpen }: { orders: CustomOrder[]; onOpen: (id: s
                 <button
                   key={item}
                   type="button"
-                  onClick={() => setPage(item)}
+                  onClick={() => {
+                    if (typeof item === 'number') setPage(item)
+                  }}
                   className={cn('grid size-8 place-items-center rounded-lg', item === current ? 'font-semibold' : 'text-neutral-400')}
                 >
                   {item}
