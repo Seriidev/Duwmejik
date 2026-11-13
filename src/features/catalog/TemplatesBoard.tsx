@@ -1,7 +1,8 @@
 'use client'
 
-import { Bell, Bookmark, ClipboardList, Eye, Heart, Image as ImageIcon, LayoutGrid, PanelLeftOpen, QrCode } from 'lucide-react'
+import { Bell, Bookmark, ClipboardList, Eye, Heart, Image as ImageIcon, LayoutTemplate, PanelLeftOpen, QrCode } from 'lucide-react'
 import { MdOutlineImageSearch } from 'react-icons/md'
+import { IconTip } from '@/components/ui/IconTip'
 import cardPreview from '@/assets/card-preview.jpg'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
@@ -12,6 +13,8 @@ import { isPrintWork } from '@/data/catalog'
 import { PreviewModal } from '@/features/catalog/PreviewModal'
 import { OrderWizardPage } from '@/features/orders/OrderWizardPage'
 import { QrGenerator } from '@/features/catalog/QrGenerator'
+import { useRequireUser } from '@/hooks/useRequireUser'
+import { authHref } from '@/lib/authHref'
 import { cn } from '@/lib/cn'
 import { useAccountStore } from '@/store/useAccountStore'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -30,6 +33,12 @@ const chips = [
   { id: 'postcards', label: 'Postcards' },
   { id: 'stickers', label: 'Stickers' },
   { id: 'menu', label: 'Menu' },
+  { id: 'brochures', label: 'Brochures' },
+  { id: 'packaging', label: 'Packaging' },
+  { id: 'pens', label: 'Pens' },
+  { id: 'notebooks', label: 'Notebooks' },
+  { id: 'glasses', label: 'Glasses' },
+  { id: 'engraving', label: 'Engraving' },
 ] as const
 
 type ChipId = (typeof chips)[number]['id']
@@ -58,14 +67,24 @@ const searchAliases: Record<string, ChipId> = {
   sticker: 'stickers',
   stickers: 'stickers',
   menu: 'menu',
+  brochure: 'brochures',
+  brochures: 'brochures',
+  packaging: 'packaging',
+  pen: 'pens',
+  pens: 'pens',
+  notebook: 'notebooks',
+  notebooks: 'notebooks',
+  glass: 'glasses',
+  glasses: 'glasses',
+  engraving: 'engraving',
 }
 
 function matchesChip(product: Product, chip: ChipId) {
   if (chip === 'all' || chip === 'popular') return true
-  if (chip === 'menu') {
-    const text = `${product.title} ${product.tags.join(' ')}`.toLowerCase()
-    return text.includes('меню') || text.includes('menu')
-  }
+  const text = `${product.title} ${product.description} ${product.tags.join(' ')}`.toLowerCase()
+  if (chip === 'menu') return text.includes('меню') || text.includes('menu')
+  if (chip === 'glasses') return text.includes('бокал') || text.includes('glass')
+  if (chip === 'engraving') return text.includes('гравир') || text.includes('engrav')
   if (chip === 'tshirts') return product.tags.some((tag) => tag.toLowerCase().includes('футбол'))
   return product.categoryId === chip
 }
@@ -95,6 +114,7 @@ export function TemplatesBoard() {
   const theme = useThemeStore((state) => state.theme)
   const [menuOpen, setMenuOpen] = useState(false)
   const savedNotice = useSavedNotice()
+  const requireUser = useRequireUser()
 
   useEffect(() => {
     const wide = window.matchMedia('(min-width: 1024px)')
@@ -144,6 +164,7 @@ export function TemplatesBoard() {
     if (!category) return
     const known = chips.find((item) => item.id === category)
     if (known && known.id !== 'all' && known.id !== 'popular') {
+      setPanel('templates')
       setChip(known.id)
       setQuery('')
       setDraft('')
@@ -164,6 +185,13 @@ export function TemplatesBoard() {
     setPickedFrom(isPrintWork(product) ? 'gallery' : 'templates')
     setPanel('orders')
   }, [params, products])
+
+  useEffect(() => {
+    if (user?.role !== 'seller') return
+    const next = new URLSearchParams(window.location.search)
+    if (!next.get('section')) next.set('section', 'templates')
+    router.replace(`/seller?${next}`)
+  }, [user, router])
 
   useEffect(() => {
     if (pick !== 'gallery' && pick !== 'templates') return
@@ -194,8 +222,9 @@ export function TemplatesBoard() {
       const url = new URL(href, 'http://local')
       const category = url.searchParams.get('category')
       const q = (url.searchParams.get('q') ?? '').toLowerCase()
-      if (category === 'cards' || category === 'flyers' || category === 'banners' || category === 'postcards' || category === 'stickers') {
-        nextChip = category
+      const known = chips.find((item) => item.id === category)
+      if (known && known.id !== 'all' && known.id !== 'popular') {
+        nextChip = known.id
       } else if (q.includes('меню') || q.includes('menu')) {
         nextChip = 'menu'
       }
@@ -223,9 +252,11 @@ export function TemplatesBoard() {
   const visible = useMemo(() => {
     const text = query.trim().toLowerCase()
     const alias = searchAliases[text]
-    const collection = published.filter((product) =>
-      panel === 'gallery' ? isPrintWork(product) : !isPrintWork(product),
-    )
+    const collection = published.filter((product) => {
+      if (panel === 'gallery') return isPrintWork(product)
+      if (chip !== 'all' && chip !== 'popular') return true
+      return !isPrintWork(product)
+    })
     const matched = collection.filter((product) => {
       if (alike && product.categoryId !== alike) return false
       if (!matchesChip(product, chip)) return false
@@ -259,11 +290,10 @@ export function TemplatesBoard() {
     setAlike(product.categoryId)
   }
 
-  function requireUser() {
-    if (user) return true
-    router.push('/login?from=%2Ftemplates')
-    return false
-  }
+  useEffect(() => {
+    if (panel !== 'orders' || user) return
+    router.replace(authHref(`${window.location.pathname}${window.location.search}`))
+  }, [panel, user, router])
 
   const preview = published.find((item) => item.id === previewId) ?? null
 
@@ -293,7 +323,7 @@ export function TemplatesBoard() {
             id: 'templates',
             label: 'Templates',
             short: 'Templates',
-            icon: LayoutGrid,
+            icon: LayoutTemplate,
             active: panel === 'templates',
             onClick: () => {
               setPicking(false)
@@ -338,13 +368,13 @@ export function TemplatesBoard() {
         )}
         {panel === 'orders' ? (
           <div className="min-h-0 flex-1 overflow-y-auto">
-          <OrderWizardPage
+          {user && <OrderWizardPage
             selectedProduct={picked}
             selectedFrom={pickedFrom}
             onOpenGallery={() => openForPick('gallery')}
             onOpenTemplates={() => openForPick('templates')}
             onFinished={() => go('templates')}
-          />
+          />}
           </div>
         ) : panel === 'qr' ? (
           <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -383,7 +413,7 @@ export function TemplatesBoard() {
                 appearance="bar"
                 value={draft}
                 submitLabel="Search"
-                placeholder="Search: business card, flyers, banners, t-shirts..."
+                placeholder=""
                 onSubmit={(value) => applySearch(value)}
                 onPick={(pick) => applySearch(pick.label, pick.href)}
               />
@@ -448,16 +478,17 @@ export function TemplatesBoard() {
                         }}
                         className="absolute inset-0"
                       >
-                        <img src={cardPreview.src} alt="" className="size-full object-cover" />
+                        <img src={product.image || cardPreview.src} alt="" className="size-full object-cover" />
                       </button>
                       <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100">
                         <button
                           type="button"
                           aria-label="Similar"
                           onClick={() => showSimilar(product)}
-                          className="pointer-events-none absolute left-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
+                          className="group/tip pointer-events-none absolute left-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
                         >
                           <MdOutlineImageSearch className="size-5" />
+                          <IconTip label="Similar" side="right" />
                         </button>
                         <button
                           type="button"
@@ -469,14 +500,16 @@ export function TemplatesBoard() {
                             toggleFavorite(user.id, product.id)
                             if (!already) savedNotice.show()
                           }}
-                          className="pointer-events-none absolute right-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
+                          className="group/tip pointer-events-none absolute right-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
                         >
                           <Bookmark className={cn('size-5', saved && 'fill-white')} />
+                          <IconTip label={saved ? 'Saved' : 'Save'} side="left" />
                         </button>
                         <div className="absolute bottom-3 left-3 flex gap-2">
-                          <span className="flex h-8 items-center gap-1.5 rounded-full bg-[#4a4a4a] px-3 text-sm font-medium text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)]">
+                          <span className="group/tip relative flex h-8 items-center gap-1.5 rounded-full bg-[#4a4a4a] px-3 text-sm font-medium text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] group-hover:pointer-events-auto">
                             <Eye className="size-4" />
                             {views[product.id] ?? 0}
+                            <IconTip label="Views" side="up" />
                           </span>
                           <button
                             type="button"
@@ -486,10 +519,11 @@ export function TemplatesBoard() {
                               if (!requireUser() || !user) return
                               toggleLike(user.id, product.id)
                             }}
-                            className="pointer-events-none flex h-8 items-center gap-1.5 rounded-full bg-[#4a4a4a] px-3 text-sm font-medium text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
+                            className="group/tip pointer-events-none relative flex h-8 items-center gap-1.5 rounded-full bg-[#4a4a4a] px-3 text-sm font-medium text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
                           >
                             <Heart className={cn('size-4', liked && 'fill-white')} />
                             {likeCount(likes, product.id)}
+                            <IconTip label={liked ? 'Liked' : 'Like'} side="up" />
                           </button>
                         </div>
                       </div>

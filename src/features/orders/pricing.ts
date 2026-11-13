@@ -1,4 +1,4 @@
-import type { ServiceType, TariffId } from '@/types'
+import type { Category, ServiceType, TariffId } from '@/types'
 
 export const SERVICES: Record<
   ServiceType,
@@ -46,10 +46,39 @@ export const TARIFFS: Record<TariffId, { title: string; mult: number; days: numb
 
 export const TARIFF_ORDER: TariffId[] = ['basic', 'standard', 'premium']
 
-export function estimate(service: ServiceType, tariff: TariffId, quantity: number) {
+export function estimate(service: ServiceType, tariff: TariffId, quantity: number, base = SERVICES[service].base) {
   const qtyFactor =
     service === 'identity' || service === 'graphic' ? 1 : 1 + Math.max(0, quantity - 100) / 400
-  const price = Math.round((SERVICES[service].base * TARIFFS[tariff].mult * qtyFactor) / 10) * 10
+  const price = Math.round((base * TARIFFS[tariff].mult * qtyFactor) / 10) * 10
   const days = TARIFFS[tariff].days + (quantity > 500 && service !== 'identity' ? 3 : 0)
   return { price, days }
+}
+
+export const SUBTYPE_CATEGORY: Record<string, string> = {
+  Визитки: 'cards',
+  Буклеты: 'brochures',
+  Листовки: 'flyers',
+  Бланки: 'forms',
+  Книги: 'books',
+  Кружки: 'mugs',
+  Ручки: 'pens',
+  Блокноты: 'notebooks',
+  Баннеры: 'banners',
+  Упаковка: 'packaging',
+  Наклейки: 'stickers',
+}
+
+export function quoteOrder({
+  service,
+  quantity,
+  category,
+  serviceBase,
+}: {
+  service: ServiceType
+  quantity: number
+  category?: Category
+  serviceBase: Record<ServiceType, number>
+}) {
+  if (category) return { price: Math.round(category.unitPrice * quantity * 100) / 100, unitPrice: category.unitPrice }
+  return { price: estimate(service, 'standard', quantity, serviceBase[service]).price, unitPrice: null }
 }

@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { Button, buttonClass } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
+import { authHref } from '@/lib/authHref'
 import { createId, formatPrice } from '@/lib/format'
 import { useAccountStore } from '@/store/useAccountStore'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -33,7 +34,7 @@ export function CheckoutPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!user) router.replace('/login?from=%2Fcheckout')
+    if (!user) router.replace(authHref('/checkout'))
   }, [user, router])
 
   if (!user) return null

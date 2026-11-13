@@ -110,7 +110,7 @@ export function Footer() {
                 onClick={() => setPoint(0)}
                 className={cn(
                   'h-11 rounded-xl text-sm font-semibold',
-                  point === 0 ? 'bg-neutral-950 text-white' : 'border border-slate-200 bg-white text-slate-800',
+                  point === 0 ? 'bg-brand text-white' : 'border border-slate-200 bg-white text-slate-800',
                 )}
               >
                 {page.first}
@@ -120,7 +120,7 @@ export function Footer() {
                 onClick={() => setPoint(1)}
                 className={cn(
                   'h-11 rounded-xl text-sm font-semibold',
-                  point === 1 ? 'bg-neutral-950 text-white' : 'border border-slate-200 bg-white text-slate-800',
+                  point === 1 ? 'bg-brand text-white' : 'border border-slate-200 bg-white text-slate-800',
                 )}
               >
                 {page.second}
@@ -197,7 +197,7 @@ function OfficeMap({ active }: { active: number }) {
   }, [active])
 
   return (
-    <div className="relative mt-3 h-[180px] overflow-hidden rounded-2xl bg-[#E6E8EE] sm:h-[210px]">
+    <div className="relative isolate mt-3 h-[180px] overflow-hidden rounded-2xl bg-[#E6E8EE] sm:h-[210px]">
       <div ref={nodeRef} className="absolute inset-0" />
     </div>
   )

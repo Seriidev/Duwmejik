@@ -1,21 +1,26 @@
 'use client'
 
-import { BarChart3, Bell, Bookmark, Eye, Heart, Images, LayoutGrid, PanelLeftOpen, QrCode, Upload, X } from 'lucide-react'
+import { BarChart3, Bell, Bookmark, ClipboardList, Eye, Heart, Images, LayoutTemplate, PanelLeftOpen, QrCode, Upload } from 'lucide-react'
 import { MdOutlineImageSearch } from 'react-icons/md'
+import { IconTip } from '@/components/ui/IconTip'
 import cardPreview from '@/assets/card-preview.jpg'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Gate } from '@/components/Gate'
 import { SearchBox } from '@/components/SearchBox'
-import { SideMenu } from '@/components/layout/SideMenu'
+import { SideMenu, AccountChip } from '@/components/layout/SideMenu'
 import { buttonClass } from '@/components/ui/Button'
-import { Modal } from '@/components/ui/Modal'
 import { SavedNotice, useSavedNotice } from '@/components/ui/SavedNotice'
+import { isPrintWork } from '@/data/catalog'
+import { PreviewModal } from '@/features/catalog/PreviewModal'
 import { QrGenerator } from '@/features/catalog/QrGenerator'
+import { OrderWizardPage } from '@/features/orders/OrderWizardPage'
 import { NoticeBoard } from '@/features/seller/NoticeBoard'
 import { UploadWork, type WorkSubmission } from '@/features/seller/UploadWork'
 import { WorksBoard } from '@/features/seller/WorksBoard'
 import { cn } from '@/lib/cn'
+import { dashboardFor, isStaff } from '@/lib/authHref'
 import { useAccountStore } from '@/store/useAccountStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useCatalogStore } from '@/store/useCatalogStore'
@@ -24,7 +29,7 @@ import { useNoticeStore } from '@/store/useNoticeStore'
 import { useThemeStore } from '@/store/useThemeStore'
 import type { Product, ProductStatus } from '@/types'
 
-type Panel = 'works' | 'upload' | 'templates' | 'qr' | 'stats' | 'inbox'
+type Panel = 'works' | 'upload' | 'templates' | 'orders' | 'qr' | 'stats' | 'inbox'
 
 const statusText: Record<ProductStatus, string> = {
   pending: 'На проверке',
@@ -33,6 +38,7 @@ const statusText: Record<ProductStatus, string> = {
 }
 
 export function SellerPage() {
+  const router = useRouter()
   const user = useAuthStore((state) => state.user)
   const products = useCatalogStore((state) => state.products)
   const categories = useCatalogStore((state) => state.categories)
@@ -52,6 +58,9 @@ export function SellerPage() {
   const [templateQuery, setTemplateQuery] = useState('')
   const [templateChip, setTemplateChip] = useState<string | null>(null)
   const [templateSearchTick, setTemplateSearchTick] = useState(0)
+  const [ordered, setOrdered] = useState<Product | null>(null)
+  const [orderedFrom, setOrderedFrom] = useState<'gallery' | 'templates' | null>(null)
+  const [picking, setPicking] = useState<'gallery' | 'templates' | null>(null)
 
   useEffect(() => {
     const wide = window.matchMedia('(min-width: 1024px)')
@@ -61,15 +70,53 @@ export function SellerPage() {
     return () => wide.removeEventListener('change', apply)
   }, [])
 
-  if (!user) {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const section = params.get('section')
+    const product = useCatalogStore.getState().products.find((item) => item.id === params.get('product'))
+    const pick = params.get('pick')
+    if (product) {
+      setOrdered(product)
+      setOrderedFrom(isPrintWork(product) ? 'gallery' : 'templates')
+      setPanel('orders')
+    } else if (pick === 'gallery' || pick === 'templates') {
+      setPicking(pick)
+      setPanel('templates')
+    } else if (section === 'orders' || section === 'qr') {
+      setPanel(section)
+    } else if (section === 'notification') {
+      setPanel('inbox')
+    } else if (section === 'templates' || section === 'gallery') {
+      const text = params.get('q') ?? ''
+      setTemplateDraft(text)
+      setTemplateQuery(text)
+      setTemplateChip(searchChip(`/templates?${params}`))
+      setPanel('templates')
+    }
+  }, [])
+
+  useEffect(() => {
+    function leave() {
+      if (!useAuthStore.getState().user) router.replace('/login')
+    }
+    if (useAuthStore.persist.hasHydrated()) {
+      leave()
+      return
+    }
+    return useAuthStore.persist.onFinishHydration(leave)
+  }, [user, router])
+
+  if (!user) return null
+
+  if (isStaff(user.role)) {
     return (
       <div className="min-h-svh bg-white">
         <Gate
-          title="Кабинет дизайнера"
-          text="Войдите, чтобы открыть свои шаблоны и статистику."
+          title="Это кабинет дизайнера"
+          text="У вашей роли своя рабочая страница."
           action={
-            <Link href="/login?from=%2Fseller" className={buttonClass()}>
-              Войти
+            <Link href={dashboardFor(user.role)} className={buttonClass()}>
+              Открыть рабочую страницу
             </Link>
           }
         />
@@ -81,8 +128,8 @@ export function SellerPage() {
     return (
       <div className="min-h-svh bg-white">
         <Gate
-          title="Укажите ID"
-          text="ID дизайнера начинается с @ и обязателен. Поле стоит в настройках профиля, сразу после почты."
+          title="Укажите имя пользователя"
+          text="Имя пользователя начинается с @ и обязательно. Поле стоит в настройках профиля, сразу после почты."
           action={
             <Link href="/account?tab=settings" className={buttonClass()}>
               Открыть настройки
@@ -97,8 +144,12 @@ export function SellerPage() {
     return (
       <div className="min-h-svh bg-white">
         <Gate
-          title="Сначала станьте дизайнером"
-          text="Пункт есть в настройках профиля. После согласия с условиями откроется этот кабинет."
+          title={user.designerRequest?.status === 'pending' ? 'Заявка на проверке' : 'Сначала станьте дизайнером'}
+          text={
+            user.designerRequest?.status === 'pending'
+              ? 'Администратор проверяет вашу заявку. После одобрения здесь откроется кабинет дизайнера.'
+              : 'Подайте заявку в настройках профиля. Кабинет откроется после одобрения администратором.'
+          }
           action={
             <Link href="/account?tab=settings" className={buttonClass()}>
               Открыть настройки
@@ -123,7 +174,19 @@ export function SellerPage() {
 
   function openPanel(next: Panel) {
     setPanel(next)
+    setPicking(null)
     if (window.innerWidth < 1024) setMenuOpen(false)
+  }
+
+  function openPicker(from: 'gallery' | 'templates') {
+    openPanel('templates')
+    setPicking(from)
+  }
+
+  function orderDesign(product: Product) {
+    setOrdered(product)
+    setOrderedFrom(picking ?? (isPrintWork(product) ? 'gallery' : 'templates'))
+    openPanel('orders')
   }
 
   function openInbox() {
@@ -177,8 +240,10 @@ export function SellerPage() {
       : panel === 'upload'
         ? 'Загрузить работу'
         : panel === 'templates'
-          ? 'Templates'
-          : panel === 'qr'
+          ? 'Home feed'
+          : panel === 'orders'
+            ? 'Способ заказа'
+            : panel === 'qr'
             ? 'QR code generate'
             : panel === 'inbox'
               ? 'Сообщения'
@@ -190,12 +255,15 @@ export function SellerPage() {
         expanded={menuOpen}
         onToggle={() => setMenuOpen((open) => !open)}
         loginHref="/login?from=%2Fseller"
+        showAccount={false}
         items={[
-          { id: 'templates', label: 'Templates', short: 'Templates', icon: LayoutGrid, active: panel === 'templates', onClick: () => openPanel('templates') },
+          { id: 'templates', label: 'Home feed', short: 'Feed', icon: LayoutTemplate, active: panel === 'templates', onClick: () => openPanel('templates') },
           { id: 'qr', label: 'QR code generate', short: 'QR', icon: QrCode, active: panel === 'qr', onClick: () => openPanel('qr') },
+          { id: 'orders', label: 'Orders', short: 'Orders', icon: ClipboardList, active: panel === 'orders', onClick: () => openPanel('orders') },
           { id: 'stats', label: 'Анализ', short: 'Анализ', icon: BarChart3, active: panel === 'stats', separator: true, onClick: () => openPanel('stats') },
           { id: 'works', label: 'Мои работы', short: 'Работы', icon: Images, active: panel === 'works', onClick: () => openPanel('works') },
           { id: 'upload', label: 'Загрузить работу', short: 'Загрузить', icon: Upload, active: panel === 'upload', onClick: () => openUpload() },
+          { id: 'inbox', label: 'Уведомления', short: 'Увед.', icon: Bell, active: panel === 'inbox', separator: true, badge: unread, onClick: openInbox },
         ]}
       />
 
@@ -223,7 +291,7 @@ export function SellerPage() {
                 appearance="bar"
                 value={templateDraft}
                 submitLabel="Search"
-                placeholder="Search: business card, flyers, banners, t-shirts..."
+                placeholder=""
                 onSubmit={(value) => applyTemplateSearch(value)}
                 onPick={(pick) => applyTemplateSearch(pick.label, pick.href)}
               />
@@ -233,22 +301,7 @@ export function SellerPage() {
           ) : (
             <h1 className="min-w-0 flex-1 text-xl font-semibold tracking-tight">{title}</h1>
           )}
-          <button
-            type="button"
-            aria-label={unread > 0 ? `Сообщения, непрочитанных: ${unread}` : 'Сообщения'}
-            onClick={openInbox}
-            className={cn(
-              'relative grid size-11 shrink-0 place-items-center rounded-full border',
-              panel === 'inbox' ? 'border-blue-200 bg-blue-50 text-blue-600' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-800',
-            )}
-          >
-            <Bell className="size-5" />
-            {unread > 0 && (
-              <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[11px] font-semibold text-white">
-                {unread > 9 ? '9+' : unread}
-              </span>
-            )}
-          </button>
+          <AccountChip loginHref="/login?from=%2Fseller" className="shrink-0 text-slate-900" />
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -274,8 +327,26 @@ export function SellerPage() {
           <NoticeBoard userId={user.id} />
         ) : panel === 'qr' ? (
           <QrGenerator />
+        ) : panel === 'orders' ? (
+          <OrderWizardPage
+            selectedProduct={ordered}
+            selectedFrom={orderedFrom}
+            onOpenGallery={() => openPicker('gallery')}
+            onOpenTemplates={() => openPicker('templates')}
+            onFinished={() => {
+              setOrdered(null)
+              openPanel('templates')
+            }}
+          />
         ) : panel === 'templates' ? (
-          <TemplateCards products={products} query={templateQuery} chip={templateChip} searchTick={templateSearchTick} />
+          <TemplateCards
+            products={products}
+            query={templateQuery}
+            chip={templateChip}
+            searchTick={templateSearchTick}
+            picking={Boolean(picking)}
+            onOrder={orderDesign}
+          />
         ) : (
           <section className="px-4 py-6 sm:px-6">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
@@ -347,11 +418,15 @@ function TemplateCards({
   query,
   chip,
   searchTick,
+  picking,
+  onOrder,
 }: {
   products: Product[]
   query: string
   chip: string | null
   searchTick: number
+  picking: boolean
+  onOrder: (product: Product) => void
 }) {
   const user = useAuthStore((state) => state.user)
   const favorites = useAccountStore((state) => (user ? state.favorites[user.id] : undefined))
@@ -369,9 +444,11 @@ function TemplateCards({
     setAlike(null)
   }
   const published = products.filter((item) => item.status === 'published')
+  const own = user ? products.filter((item) => item.authorId === user.id && item.status !== 'published') : []
+  const feed = [...own, ...published]
   const text = query.trim().toLowerCase()
   const alias = searchAliases[text]
-  const shown = published.filter((item) => {
+  const shown = feed.filter((item) => {
     if (alike && item.categoryId !== alike) return false
     if (chip && !matchesSearchChip(item, chip)) return false
     if (!text) return true
@@ -379,12 +456,13 @@ function TemplateCards({
     const haystack = `${item.title} ${item.description} ${item.tags.join(' ')}`.toLowerCase()
     return haystack.includes(text)
   })
-  if (published.length === 0) {
+  if (feed.length === 0) {
     return <p className="px-6 py-16 text-center text-sm text-slate-500">В каталоге пока нет шаблонов.</p>
   }
 
   return (
     <>
+      {picking && <p className="px-6 pt-6 text-sm text-slate-500">Нажмите на макет, чтобы открыть и посмотреть его.</p>}
       {alike && (
         <div className="flex items-center justify-between px-4 pt-6 sm:px-6">
           <p className="text-sm font-medium text-slate-700">Похожие</p>
@@ -410,16 +488,17 @@ function TemplateCards({
                 }}
                 className="absolute inset-0"
               >
-                <img src={cardPreview.src} alt="" className="size-full object-cover" />
+                <img src={product.image || cardPreview.src} alt="" className="size-full object-cover" />
               </button>
               <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100">
                 <button
                   type="button"
                   aria-label="Похожие"
                   onClick={() => setAlike(product.categoryId)}
-                  className="pointer-events-none absolute left-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
+                  className="group/tip pointer-events-none absolute left-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
                 >
                   <MdOutlineImageSearch className="size-5" />
+                  <IconTip label="Похожие" side="right" />
                 </button>
                 <button
                   type="button"
@@ -431,14 +510,16 @@ function TemplateCards({
                     toggleFavorite(user.id, product.id)
                     if (!already) savedNotice.show()
                   }}
-                  className="pointer-events-none absolute right-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
+                  className="group/tip pointer-events-none absolute right-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
                 >
                   <Bookmark className={cn('size-5', saved && 'fill-white')} />
+                  <IconTip label={saved ? 'Сохранено' : 'Сохранить'} side="left" />
                 </button>
                 <div className="absolute bottom-3 left-3 flex gap-2">
-                  <span className="flex h-8 items-center gap-1.5 rounded-full bg-[#4a4a4a] px-3 text-sm font-medium text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)]">
+                  <span className="group/tip relative flex h-8 items-center gap-1.5 rounded-full bg-[#4a4a4a] px-3 text-sm font-medium text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] group-hover:pointer-events-auto">
                     <Eye className="size-4" />
                     {views[product.id] ?? 0}
+                    <IconTip label="Просмотры" side="up" />
                   </span>
                   <button
                     type="button"
@@ -448,10 +529,11 @@ function TemplateCards({
                       if (!user) return
                       toggleLike(user.id, product.id)
                     }}
-                    className="pointer-events-none flex h-8 items-center gap-1.5 rounded-full bg-[#4a4a4a] px-3 text-sm font-medium text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
+                    className="group/tip pointer-events-none relative flex h-8 items-center gap-1.5 rounded-full bg-[#4a4a4a] px-3 text-sm font-medium text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
                   >
                     <Heart className={cn('size-4', liked && 'fill-white')} />
                     {likeCount(likes, product.id)}
+                    <IconTip label={liked ? 'Убрать лайк' : 'Лайк'} side="up" />
                   </button>
                 </div>
               </div>
@@ -460,31 +542,14 @@ function TemplateCards({
         })}
       </div>
       )}
-      <Modal open={Boolean(open)} title={open?.title ?? 'Шаблон'} onClose={() => setOpen(null)} wide bare>
-        {open && (
-          <div className="grid items-start gap-5 lg:grid-cols-[1.15fr_0.9fr]">
-            <div className="overflow-hidden rounded-[22px] bg-slate-900">
-              <img src={cardPreview.src} alt="" className="aspect-square w-full object-cover" />
-            </div>
-            <div className="relative px-1 py-2 lg:px-3">
-              <button
-                type="button"
-                onClick={() => setOpen(null)}
-                className="absolute top-1 right-0 grid size-9 place-items-center rounded-full text-slate-500 hover:bg-slate-100"
-                aria-label="Закрыть окно"
-              >
-                <X className="size-5" />
-              </button>
-              <h3 className="pr-10 text-3xl font-semibold tracking-tight text-slate-950">{open.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-500">{open.description}</p>
-              <p className="mt-6 text-xs text-slate-400">Автор</p>
-              <Link href={`/designer/${open.authorId}`} className="mt-1 block text-sm font-medium text-slate-800 hover:text-blue-600">
-                {open.author}
-              </Link>
-            </div>
-          </div>
-        )}
-      </Modal>
+      <PreviewModal
+        product={open}
+        onClose={() => setOpen(null)}
+        onOrder={() => {
+          if (open) onOrder(open)
+          setOpen(null)
+        }}
+      />
       <SavedNotice open={savedNotice.open} />
     </>
   )

@@ -22,10 +22,10 @@ const quickPicks: Pick[] = [
   { href: '/templates?category=stickers', image: '/categories/sticker.png', ru: 'Наклейки', en: 'Stickers', tk: 'Stikerler' },
   { href: '/templates?category=packaging', image: '/categories/packaging.png', ru: 'Упаковка', en: 'Packaging', tk: 'Gaplama' },
   { href: '/templates?category=postcards', image: '/categories/postcard.jpg', ru: 'Открытки', en: 'Postcards', tk: 'Açyk hatlar' },
-  { href: '/templates?q=бокал', image: '/categories/glasses.jpg', ru: 'Бокалы', en: 'Glasses', tk: 'Bokalary' },
+  { href: '/templates?category=glasses', image: '/categories/glasses.jpg', ru: 'Бокалы', en: 'Glasses', tk: 'Bokalary' },
   { href: '/templates?category=pens', image: '/categories/pens.jpg', ru: 'Ручки', en: 'Pens', tk: 'Ruçkalar' },
   { href: '/templates?category=notebooks', image: '/categories/notebooks.jpg', ru: 'Блокноты', en: 'Notebooks', tk: 'Bloknotlar' },
-  { href: '/templates?q=гравировка', image: '/categories/engraving.jpg', ru: 'Гравировки', en: 'Engraving', tk: 'Grawirleme' },
+  { href: '/templates?category=engraving', image: '/categories/engraving.jpg', ru: 'Гравировки', en: 'Engraving', tk: 'Grawirleme' },
 ]
 
 const ideas: Pick[] = [
@@ -132,6 +132,7 @@ export function SearchBox({
   const [tracked, setTracked] = useState(external)
   const [text, setText] = useState(external)
   const [open, setOpen] = useState(false)
+  const [focused, setFocused] = useState(false)
   const [recent, setRecent] = useState<Recent[]>([])
   const [box, setBox] = useState<{ top: number; left: number; width: number } | null>(null)
   const boxRef = useRef<HTMLDivElement | null>(null)
@@ -229,7 +230,7 @@ export function SearchBox({
     if (!query) return []
     const people = new Map<string, { id: string; name: string; handle: string; image: string }>()
     for (const account of accounts) {
-      if (account.role !== 'seller' && account.role !== 'admin') continue
+      if (account.role !== 'seller') continue
       people.set(account.id, {
         id: account.id,
         name: account.name,
@@ -303,8 +304,7 @@ export function SearchBox({
     else router.push(hit?.href ?? `/templates?q=${encodeURIComponent(clean)}`)
   }
 
-  const hintPrefix = placeholder.includes(':') ? `${placeholder.slice(0, placeholder.indexOf(':') + 1)} ` : ''
-  const showTypedHint = Boolean(hintKey) && text.length === 0
+  const showTypedHint = Boolean(hintKey) && text.length === 0 && !focused
 
   const panel =
     open && box && typeof document !== 'undefined'
@@ -389,15 +389,17 @@ export function SearchBox({
         <input
           id="site-search"
           value={text}
-          placeholder={showTypedHint ? '' : placeholder}
+          placeholder={focused || showTypedHint ? '' : placeholder}
           onChange={(event) => {
             setText(event.target.value)
             setOpen(true)
           }}
           onFocus={() => {
+            setFocused(true)
             place()
             setOpen(true)
           }}
+          onBlur={() => setFocused(false)}
           className={cn(
             'w-full rounded-full bg-white text-slate-900 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-white/70',
             appearance === 'hero'
@@ -420,7 +422,6 @@ export function SearchBox({
               appearance === 'hero' || appearance === 'bar' ? 'right-28' : !large && 'right-4',
             )}
           >
-            {hintPrefix}
             {typedHint}
             <span className="ml-0.5 inline-block h-[1.05em] w-px shrink-0 bg-slate-400" />
           </span>
@@ -430,7 +431,7 @@ export function SearchBox({
             type="submit"
             className={cn(
               'absolute top-1/2 -translate-y-1/2 rounded-full text-sm font-semibold text-white',
-              appearance === 'bar' ? 'right-1 h-9 bg-blue-600 px-4 hover:bg-blue-700' : appearance === 'hero' ? 'right-1.5 h-9 bg-brand px-4' : 'right-2 h-10 bg-brand px-5',
+              appearance === 'bar' ? 'right-1 h-9 bg-brand px-4 hover:brightness-110' : appearance === 'hero' ? 'right-1.5 h-9 bg-brand px-4' : 'right-2 h-10 bg-brand px-5',
             )}
           >
             {submitLabel}

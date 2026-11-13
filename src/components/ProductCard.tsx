@@ -1,6 +1,7 @@
 import { Heart } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import cardPreview from '@/assets/card-preview.jpg'
+import { useRequireUser } from '@/hooks/useRequireUser'
 import { cn } from '@/lib/cn'
 import { useAccountStore } from '@/store/useAccountStore'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -15,6 +16,7 @@ export function ProductCard({
   onPreview?: (id: string) => void
 }) {
   const router = useRouter()
+  const requireUser = useRequireUser()
   const category = useCatalogStore((state) => state.categories.find((item) => item.id === product.categoryId))
   const user = useAuthStore((state) => state.user)
   const favorites = useAccountStore((state) => (user ? state.favorites[user.id] : undefined))
@@ -37,17 +39,14 @@ export function ProductCard({
           aria-label={liked ? 'Убрать из избранного' : 'В избранное'}
           onClick={(event) => {
             event.stopPropagation()
-            if (!user) {
-              router.push('/login')
-              return
-            }
+            if (!requireUser() || !user) return
             toggleFavorite(user.id, product.id)
           }}
           className="absolute right-3 top-3 z-10 grid size-9 place-items-center rounded-xl bg-white text-slate-800 shadow-sm"
         >
           <Heart className={cn('size-4', liked && 'fill-rose-500 text-rose-500')} />
         </button>
-        <img src={cardPreview.src} alt="" className="aspect-square w-full rounded-[22px] object-cover" />
+        <img src={product.image || cardPreview.src} alt="" className="aspect-square w-full rounded-[22px] object-cover" />
       </div>
       <div className="px-2 py-3">
         <h3 className="line-clamp-1 text-base font-semibold leading-tight text-slate-950">{product.title}</h3>

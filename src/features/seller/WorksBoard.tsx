@@ -70,7 +70,7 @@ export function WorksBoard({
         <button
           type="button"
           onClick={() => onOpenUpload()}
-          className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(47,107,255,0.28)] hover:brightness-110"
+          className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:brightness-110"
         >
           <Upload className="size-4" />
           Загрузить работу
@@ -117,20 +117,21 @@ export function WorksBoard({
       </div>
       {notice && <p className="mt-3 text-sm font-medium text-emerald-700">{notice}</p>}
 
-      <div className="mt-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {filters.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setFilter(item.id)}
-            className={cn(
-              'h-9 shrink-0 rounded-full px-4 text-sm font-medium',
-              filter === item.id ? 'bg-slate-950 text-white' : 'bg-white text-slate-600 hover:bg-slate-100',
-            )}
-          >
-            {item.label}
-          </button>
-        ))}
+      <div className="mt-5 inline-flex flex-wrap gap-1 rounded-xl bg-white p-1">
+        {filters.map((item) => {
+          const count = item.id === 'all' ? mine.length : mine.filter((work) => work.status === item.id).length
+          const active = filter === item.id
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setFilter(item.id)}
+              className={cn('rounded-lg px-3 py-1.5 text-sm', active ? 'bg-[#5b4dff] font-medium text-white' : 'text-neutral-600 hover:bg-neutral-50')}
+            >
+              {item.label} · {count}
+            </button>
+          )
+        })}
       </div>
 
       <div className="mt-3 shrink-0 overflow-hidden rounded-[22px] bg-white shadow-[0_8px_30px_rgba(20,24,40,0.04)]">
@@ -178,8 +179,8 @@ export function WorksBoard({
                               ))}
                             </span>
                           )}
-                          {product.status === 'rejected' && product.description && (
-                            <p className="mt-0.5 line-clamp-2 max-w-xs text-xs text-rose-500">{product.description}</p>
+                          {product.status === 'rejected' && product.reviewNote && (
+                            <p className="mt-0.5 line-clamp-2 max-w-xs text-xs text-rose-500">Причина: {product.reviewNote}</p>
                           )}
                         </div>
                       </div>

@@ -15,7 +15,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const dashboard = pathname.startsWith('/templates') || pathname.startsWith('/seller')
   const hostedQr = pathname === '/q'
   const profile = pathname === '/account' || pathname.startsWith('/designer')
-  const bare = dashboard || hostedQr || profile
+  const admin = pathname.startsWith('/admin') || pathname.startsWith('/superadmin')
+  const auth = pathname === '/login'
+  const bare = dashboard || hostedQr || profile || admin || auth
 
   useEffect(() => {
     if (consumeManualScroll()) return
@@ -36,7 +38,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   }, [pathname, hash])
 
   return (
-    <div className={cn('flex min-h-svh flex-col text-ink', dashboard || profile ? 'bg-white' : 'bg-surface')}>
+    <div className={cn('flex min-h-svh flex-col text-ink', admin ? 'bg-[#f4f5f7]' : dashboard || profile ? 'bg-white' : 'bg-surface')}>
       {!bare && <Header />}
       <main className="flex-1">{children}</main>
       {!bare && <Footer />}

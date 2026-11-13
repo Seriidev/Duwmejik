@@ -9,6 +9,7 @@ import { TemplateArt } from '@/components/TemplateArt'
 import { Badge, PriceBadge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { COLORS, LICENSES, ORIENTATION_LABEL, STYLE_LABEL } from '@/data/labels'
+import { useRequireUser } from '@/hooks/useRequireUser'
 import { downloadTemplate } from '@/lib/download'
 import { createId, formatPrice } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -21,6 +22,7 @@ export function ProductPage() {
   const params = useParams<{ id: string }>()
   const id = params.id
   const router = useRouter()
+  const requireUser = useRequireUser()
   const product = useCatalogStore((state) => state.products.find((item) => item.id === id))
   const category = useCatalogStore((state) => state.categories.find((item) => item.id === product?.categoryId))
   const related = useCatalogStore((state) =>
@@ -51,15 +53,13 @@ export function ProductPage() {
   const liked = Boolean(favorites?.includes(product.id))
 
   function buy() {
+    if (!requireUser()) return
     add(product!.id)
     router.push('/checkout')
   }
 
   function downloadFree() {
-    if (!user) {
-      router.push(`/login?from=${encodeURIComponent(`/product/${product!.id}`)}`)
-      return
-    }
+    if (!requireUser() || !user) return
     if (!owned) {
       addPurchases([
         {
@@ -152,16 +152,13 @@ export function ProductPage() {
             ) : (
               <Button onClick={buy}>Купить и скачать</Button>
             )}
-            <Button variant="secondary" onClick={() => add(product.id)} disabled={inCart}>
+            <Button variant="secondary" onClick={() => requireUser() && add(product.id)} disabled={inCart}>
               {inCart ? 'В корзине' : 'Добавить в корзину'}
             </Button>
             <Button
               variant="ghost"
               onClick={() => {
-                if (!user) {
-                  router.push(`/login?from=${encodeURIComponent(`/product/${product.id}`)}`)
-                  return
-                }
+                if (!requireUser() || !user) return
                 toggleFavorite(user.id, product.id)
               }}
             >

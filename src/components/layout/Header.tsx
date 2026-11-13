@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/cn'
+import { dashboardFor, isStaff, roleLabel } from '@/lib/authHref'
 import { markManualScroll, scrollToId, scrollToTop } from '@/lib/scrollTo'
 import { useHash } from '@/lib/useHash'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -23,6 +24,9 @@ export function Header() {
   const router = useRouter()
   const [visible, setVisible] = useState('')
   const onHome = pathname === '/'
+  const staff = Boolean(user && isStaff(user.role))
+  const accountHref = user ? (staff ? dashboardFor(user.role) : '/account') : '/login'
+  const accountName = user ? (staff ? roleLabel(user.role) : user.name) : t.login
 
   useEffect(() => {
     setMounted(true)
@@ -126,18 +130,18 @@ export function Header() {
           <LanguageMenu trigger="plain" />
 
           <Link
-            href={user ? '/account' : '/login'}
-            aria-label={user ? user.name : t.login}
+            href={accountHref}
+            aria-label={accountName}
             className={cn(
-              'hidden items-center justify-center rounded-full bg-brand text-sm font-semibold text-white lg:inline-flex',
-              user ? 'size-10 overflow-hidden' : 'h-10 px-3.5 text-[13px] sm:px-5 sm:text-sm',
+              'hidden items-center justify-center bg-brand text-sm font-semibold text-white lg:inline-flex',
+              user ? 'size-10 overflow-hidden rounded-full' : 'h-11 rounded-xl px-5 text-sm hover:brightness-110',
             )}
           >
             {user ? (
               user.avatar ? (
                 <img src={user.avatar} alt="" className="size-full object-cover" />
               ) : (
-                (user.name.trim()[0] ?? 'A').toUpperCase()
+                (accountName.trim()[0] ?? 'A').toUpperCase()
               )
             ) : (
               t.login
@@ -180,7 +184,7 @@ export function Header() {
               ))}
             </div>
             <Link
-              href={user ? '/account' : '/login'}
+              href={accountHref}
               onClick={() => setMenuOpen(false)}
               className="mt-2 flex items-center gap-3 rounded-2xl border-t border-slate-100 px-3 py-3"
             >
@@ -188,11 +192,11 @@ export function Header() {
                 {user?.avatar ? (
                   <img src={user.avatar} alt="" className="size-full object-cover" />
                 ) : (
-                  (user?.name.trim()[0] ?? t.login.trim()[0] ?? 'A').toUpperCase()
+                  (accountName.trim()[0] ?? 'A').toUpperCase()
                 )}
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold text-neutral-950">{user ? user.name : t.login}</span>
+                <span className="block truncate text-sm font-semibold text-neutral-950">{accountName}</span>
                 {user && <span className="block text-xs text-slate-400">{t.account}</span>}
               </span>
             </Link>

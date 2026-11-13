@@ -7,6 +7,10 @@ import { Reveal } from '@/components/Reveal'
 import { SearchBox } from '@/components/SearchBox'
 import { TemplateArt } from '@/components/TemplateArt'
 import { ContactSection } from '@/features/contacts/ContactsPage'
+import { BestOnHome } from '@/features/designers/BestMarks'
+import { HeroBackdrop } from '@/features/platform/HeroBackdrop'
+import { ProductBanner } from '@/features/platform/ProductBanner'
+import { safeHref, usePlatformStore, visibleBanners } from '@/store/usePlatformStore'
 import { cn } from '@/lib/cn'
 import { useCatalogStore } from '@/store/useCatalogStore'
 import { useLocaleStore, type Locale } from '@/store/useLocaleStore'
@@ -75,10 +79,10 @@ const homeCircles = [
   { href: '/templates?category=stickers', src: '/categories/sticker.png', ru: 'Наклейки', en: 'Stickers', tk: 'Stikerler' },
   { href: '/templates?category=packaging', src: '/categories/packaging.png', ru: 'Упаковка', en: 'Packaging', tk: 'Gaplama' },
   { href: '/templates?category=postcards', src: '/categories/postcard.jpg', ru: 'Открытки', en: 'Postcards', tk: 'Açyk hatlar' },
-  { href: '/templates?q=бокал', src: '/categories/glasses.jpg', ru: 'Бокалы', en: 'Glasses', tk: 'Bokalary' },
+  { href: '/templates?category=glasses', src: '/categories/glasses.jpg', ru: 'Бокалы', en: 'Glasses', tk: 'Bokalary' },
   { href: '/templates?category=pens', src: '/categories/pens.jpg', ru: 'Ручки', en: 'Pens', tk: 'Ruçkalar' },
   { href: '/templates?category=notebooks', src: '/categories/notebooks.jpg', ru: 'Блокноты', en: 'Notebooks', tk: 'Bloknotlar' },
-  { href: '/templates?q=гравировка', src: '/categories/engraving.jpg', ru: 'Гравировки', en: 'Engraving', tk: 'Grawirleme' },
+  { href: '/templates?category=engraving', src: '/categories/engraving.jpg', ru: 'Гравировки', en: 'Engraving', tk: 'Grawirleme' },
 ] as const
 
 function CircleRail({ locale }: { locale: Locale }) {
@@ -194,7 +198,7 @@ const shortName: Record<Locale, Record<string, string>> = {
 const copy = {
   ru: {
     hero: 'Выберите шаблон — мы подготовим макет и напечатаем',
-    search: 'Поиск: визитки, флаеры, баннеры, футболки...',
+    search: 'визитки, флаеры, баннеры, футболки...',
     searchHints: ['визитки', 'флаеры', 'баннеры', 'футболки'],
     find: 'Найти',
     allTemplates: 'Выбрать шаблон',
@@ -269,7 +273,7 @@ const copy = {
   },
   en: {
     hero: 'Pick a template — we will prepare the file and print it',
-    search: 'Search: cards, flyers, banners, t-shirts...',
+    search: 'cards, flyers, banners, t-shirts...',
     searchHints: ['cards', 'flyers', 'banners', 't-shirts'],
     find: 'Search',
     allTemplates: 'Choose a template',
@@ -344,7 +348,7 @@ const copy = {
   },
   tk: {
     hero: 'Şablon saýlaň — maketi taýýarlap, çap ederis',
-    search: 'Gözleg: wizitka, flaer, banner...',
+    search: 'wizitka, flaer, banner...',
     searchHints: ['wizitka', 'flaer', 'banner'],
     find: 'Gözle',
     allTemplates: 'Şablon saýla',
@@ -436,33 +440,41 @@ export function HomePage() {
   const safePage = Math.min(productPage, pageCount - 1)
   const visible = filtered.slice(safePage * 3, safePage * 3 + 3)
   const rating = published.length ? published.reduce((sum, item) => sum + item.rating, 0) / published.length : 4.9
+  const [bannerPreview, setBannerPreview] = useState(false)
+  const heroDraft = usePlatformStore((state) => state.draft)
+  const heroLive = usePlatformStore((state) => state.live)
+  const draftBanners = usePlatformStore((state) => state.draftBanners)
+  const liveBanners = usePlatformStore((state) => state.liveBanners)
+  useEffect(() => {
+    setBannerPreview(new URLSearchParams(window.location.search).get('preview') === 'banner')
+  }, [])
+  const hero = bannerPreview ? heroDraft : heroLive
+  const promos = visibleBanners(bannerPreview || draftBanners.length > 0 ? draftBanners : liveBanners)
+  const bannerSlides = promos.flatMap((item) => (item.images ?? []).map((image) => ({ id: image.id, code: item.code.trim() })))
 
   return (
     <div className="pb-2">
       <section className="mx-auto max-w-[1180px] px-4 pt-4 sm:px-6">
+        {bannerPreview && (
+          <p className="mb-3 rounded-xl bg-slate-950 px-4 py-2 text-center text-sm text-white">
+            Черновик баннеров. <Link href="/" className="font-semibold underline">Открыть опубликованную главную</Link>
+          </p>
+        )}
         <div className="relative overflow-hidden rounded-[24px] px-4 py-12 text-center sm:rounded-[32px] sm:px-10 sm:py-16 md:px-12 md:py-20">
-          <video
-            className="absolute inset-0 h-full w-full object-cover"
-            src="/hero.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            aria-hidden="true"
-          />
+          <HeroBackdrop hero={hero} />
           <div className="absolute inset-0 bg-blue-950/45" />
           <div className="relative z-10">
             <h1 className="mx-auto max-w-[820px] text-[28px] font-bold leading-[1.2] tracking-tight text-white sm:text-[36px] md:text-[46px]">
-              {page.hero}
+              {hero.title.trim() || page.hero}
             </h1>
             <div className="mx-auto mt-9 w-full max-w-[540px]">
               <SearchBox appearance="hero" placeholder={page.search} hints={page.searchHints} submitLabel={page.find} />
             </div>
             <div className="mx-auto mt-5 flex w-full max-w-[540px] justify-center gap-2 sm:w-auto sm:max-w-none sm:gap-3">
-              <Link href="/templates" className="inline-flex h-10 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full bg-brand px-3 text-xs font-semibold text-white sm:flex-none sm:px-5 sm:text-sm">
-                {page.allTemplates}
+              <Link href={safeHref(hero.ctaHref)} className="inline-flex h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-xl bg-brand px-3 text-xs font-semibold text-white hover:brightness-110 sm:flex-none sm:px-5 sm:text-sm">
+                {hero.cta.trim() || page.allTemplates}
               </Link>
-              <Link href="/templates?section=orders" className="inline-flex h-10 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full bg-white px-3 text-xs font-semibold text-neutral-950 sm:flex-none sm:px-5 sm:text-sm">
+              <Link href="/templates?section=orders" className="inline-flex h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-xl bg-white px-3 text-xs font-semibold text-neutral-950 sm:flex-none sm:px-5 sm:text-sm">
                 {page.orderPrint}
               </Link>
             </div>
@@ -475,6 +487,12 @@ export function HomePage() {
           <CircleRail locale={locale} />
         </Reveal>
       </section>
+
+      {bannerSlides.length > 0 && (
+        <section className={wrap}>
+          <ProductBanner slides={bannerSlides} />
+        </section>
+      )}
 
       <section id="products" className={cn(wrap, 'scroll-mt-28')}>
         <Reveal>
@@ -536,7 +554,7 @@ export function HomePage() {
                     </Link>
                     <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500">{cardBlurb[product.id] ?? product.description}</p>
                   </div>
-                  <Link href={`/templates?section=orders&product=${product.id}`} className="mx-1.5 mb-1 mt-3 inline-flex h-9 w-fit items-center rounded-full bg-neutral-950 px-4 text-sm font-semibold text-white">
+                  <Link href={`/templates?section=orders&product=${product.id}`} className="mx-1.5 mb-1 mt-3 inline-flex h-11 w-fit items-center rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:brightness-110">
                     {page.order}
           </Link>
                 </article>
@@ -618,6 +636,7 @@ export function HomePage() {
         <Reveal>
         <div className={panel}>
           <h2 className="text-center text-lg font-semibold text-slate-950 sm:text-xl">{page.designersTitle}</h2>
+          <BestOnHome />
           <div className="mt-6 grid items-center gap-8 md:mt-8 md:grid-cols-2">
             <div className="relative mx-auto h-[230px] w-full max-w-[460px] sm:h-[280px] lg:h-[300px]">
               <img
@@ -670,7 +689,7 @@ export function HomePage() {
             <h2 className="mt-1 text-2xl font-semibold tracking-tight">{page.ctaTitle}</h2>
             <p className="mt-1 text-sm text-white/80">{page.ctaText}</p>
           </div>
-          <Link href="/templates?section=qr" className="inline-flex h-11 shrink-0 items-center rounded-full bg-white px-5 text-sm font-semibold text-slate-950">
+          <Link href="/templates?section=qr" className="inline-flex h-11 shrink-0 items-center rounded-xl bg-white px-5 text-sm font-semibold text-slate-950">
             {page.ctaButton}
           </Link>
         </div>
@@ -702,8 +721,8 @@ export function HomePage() {
                 <p className={cn('mt-3 text-sm leading-6', plan.featured ? 'text-white/80' : 'text-slate-500 group-hover:text-white/80')}>{plan.text}</p>
                 <span
                   className={cn(
-                    'mt-auto inline-flex h-10 w-fit items-center rounded-full px-4 text-sm font-semibold transition-colors duration-300',
-                    plan.featured ? 'bg-white text-slate-950' : 'bg-neutral-950 text-white group-hover:bg-white group-hover:text-slate-950',
+                    'mt-auto inline-flex h-11 w-fit items-center rounded-xl px-5 text-sm font-semibold transition-colors duration-300',
+                    plan.featured ? 'bg-white text-slate-950' : 'bg-brand text-white group-hover:bg-white group-hover:text-slate-950',
                   )}
                 >
                   {plan.action}

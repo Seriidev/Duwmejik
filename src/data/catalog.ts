@@ -5,19 +5,21 @@ export function isPrintWork(product: Product) {
 }
 
 export const categorySeed: Category[] = [
-  { id: 'cards', title: 'Визитки', color: '#dbeafe', blurb: 'Плотные карточки для первого знакомства' },
-  { id: 'brochures', title: 'Буклеты и брошюры', color: '#fce7f3', blurb: 'Фальцовка, скрепка и спокойная вёрстка' },
-  { id: 'books', title: 'Книги', color: '#fef3c7', blurb: 'Обложки, развороты и книжные блоки' },
-  { id: 'mugs', title: 'Кружки', color: '#ffedd5', blurb: 'Принт на керамике и эмали' },
-  { id: 'pens', title: 'Ручки', color: '#e0e7ff', blurb: 'Тампопечать и гравировка логотипа' },
-  { id: 'notebooks', title: 'Блокноты', color: '#d1fae5', blurb: 'Обложки, форзацы и внутренние блоки' },
-  { id: 'forms', title: 'Бланки и документы', color: '#e0f2fe', blurb: 'Фирменные бланки, счета и договоры' },
-  { id: 'banners', title: 'Баннеры', color: '#ede9fe', blurb: 'Наружка и обложки для соцсетей' },
-  { id: 'flyers', title: 'Листовки', color: '#ffe4e6', blurb: 'Акции, меню и короткие объявления' },
-  { id: 'packaging', title: 'Упаковка', color: '#fef9c3', blurb: 'Коробки, пакеты и этикетки' },
-  { id: 'stickers', title: 'Наклейки', color: '#fae8ff', blurb: 'Стикерпаки и контурная резка' },
-  { id: 'postcards', title: 'Открытки', color: '#cffafe', blurb: 'Поздравления и пригласительные' },
+  { id: 'cards', title: 'Визитки', color: '#dbeafe', blurb: 'Плотные карточки для первого знакомства', unitPrice: 1.78 },
+  { id: 'brochures', title: 'Буклеты и брошюры', color: '#fce7f3', blurb: 'Фальцовка, скрепка и спокойная вёрстка', unitPrice: 0.9 },
+  { id: 'books', title: 'Книги', color: '#fef3c7', blurb: 'Обложки, развороты и книжные блоки', unitPrice: 6 },
+  { id: 'mugs', title: 'Кружки', color: '#ffedd5', blurb: 'Принт на керамике и эмали', unitPrice: 18 },
+  { id: 'pens', title: 'Ручки', color: '#e0e7ff', blurb: 'Тампопечать и гравировка логотипа', unitPrice: 4.5 },
+  { id: 'notebooks', title: 'Блокноты', color: '#d1fae5', blurb: 'Обложки, форзацы и внутренние блоки', unitPrice: 8 },
+  { id: 'forms', title: 'Бланки и документы', color: '#e0f2fe', blurb: 'Фирменные бланки, счета и договоры', unitPrice: 0.4 },
+  { id: 'banners', title: 'Баннеры', color: '#ede9fe', blurb: 'Наружка и обложки для соцсетей', unitPrice: 12 },
+  { id: 'flyers', title: 'Листовки', color: '#ffe4e6', blurb: 'Акции, меню и короткие объявления', unitPrice: 0.35 },
+  { id: 'packaging', title: 'Упаковка', color: '#fef9c3', blurb: 'Коробки, пакеты и этикетки', unitPrice: 3.2 },
+  { id: 'stickers', title: 'Наклейки', color: '#fae8ff', blurb: 'Стикерпаки и контурная резка', unitPrice: 0.25 },
+  { id: 'postcards', title: 'Открытки', color: '#cffafe', blurb: 'Поздравления и пригласительные', unitPrice: 0.55 },
 ]
+
+export const DEFAULT_UNIT_PRICE = 1.5
 
 export const productSeed: Product[] = [
   {

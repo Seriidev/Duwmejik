@@ -47,36 +47,38 @@ export function LanguageMenu({
       {open && (
         <div
           className={cn(
-            'absolute z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white py-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.14)]',
+            'absolute z-50 flex overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.14)]',
             trigger === 'dots'
-              ? 'bottom-full right-0 mb-2 w-max'
+              ? 'bottom-full right-0 mb-2'
               : direction === 'up'
-                ? 'bottom-full left-0 mb-2 w-full'
-                : 'top-full right-0 mt-2 w-56',
+                ? 'bottom-full left-0 mb-2'
+                : 'top-full right-0 mt-2',
           )}
         >
-          {languages.map((item) => {
-            const active = item.id === locale
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setLocale(item.id)
-                  setOpen(false)
-                }}
-                className={cn(
-                  'flex w-full items-center text-left text-sm',
-                  trigger === 'dots' ? 'h-10 gap-2 px-3' : 'h-11 gap-3 px-4',
-                  active ? 'bg-blue-100 text-slate-900' : 'text-slate-700 hover:bg-slate-50',
-                )}
-              >
-                <span className={cn('shrink-0 text-xs font-semibold tracking-wide text-slate-400', trigger === 'dots' ? 'w-6' : 'w-7')}>{item.code}</span>
-                <span className={cn('font-medium whitespace-nowrap', trigger !== 'dots' && 'min-w-0 flex-1')}>{item.label}</span>
-                <Check className={cn('size-4 shrink-0', active ? 'text-brand' : 'invisible')} />
-              </button>
-            )
-          })}
+          <div className="p-1.5">
+            {languages.map((item) => {
+              const active = item.id === locale
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setLocale(item.id)
+                    setOpen(false)
+                  }}
+                  className={cn(
+                    'flex w-full items-center rounded-xl text-left text-sm',
+                    trigger === 'dots' ? 'h-10 gap-2 px-3' : 'h-11 gap-3 px-4',
+                    active ? 'bg-blue-100 text-slate-900' : 'text-slate-700 hover:bg-slate-50',
+                  )}
+                >
+                  <span className={cn('shrink-0 text-xs font-semibold tracking-wide text-slate-400', trigger === 'dots' ? 'w-6' : 'w-7')}>{item.code}</span>
+                  <span className="min-w-0 flex-1 font-medium whitespace-nowrap">{item.label}</span>
+                  <Check className={cn('size-4 shrink-0', active ? 'text-brand' : 'invisible')} />
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
       {trigger === 'dots' ? (

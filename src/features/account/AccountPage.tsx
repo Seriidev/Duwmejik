@@ -5,34 +5,38 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Bookmark, Camera, ChevronLeft, Eye, Heart } from 'lucide-react'
 import { MdOutlineImageSearch } from 'react-icons/md'
+import { IconTip } from '@/components/ui/IconTip'
 import cardPreview from '@/assets/card-preview.jpg'
 import logoBell from '@/assets/logo-bell.png'
-import { Gate } from '@/components/Gate'
 import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
 import { SavedNotice, useSavedNotice } from '@/components/ui/SavedNotice'
-import { buttonClass } from '@/components/ui/Button'
-import { Input, Select } from '@/components/ui/Input'
+import { Input, Select, TextArea } from '@/components/ui/Input'
 import { isPrintWork } from '@/data/catalog'
 import { ORDER_STATUS_LABEL } from '@/data/labels'
 import { PreviewModal } from '@/features/catalog/PreviewModal'
+import { PickupPass } from '@/features/orders/PickupPass'
 import { SERVICES, TARIFFS } from '@/features/orders/pricing'
 import { cn } from '@/lib/cn'
+import { dashboardFor, isStaff } from '@/lib/authHref'
 import { formatDate, formatPrice, plural } from '@/lib/format'
 import { useAccountStore } from '@/store/useAccountStore'
 import { normalizeHandle, useAuthStore } from '@/store/useAuthStore'
-import { followerCount, useFollowStore } from '@/store/useFollowStore'
+import { useFollowStore } from '@/store/useFollowStore'
 import { useCatalogStore } from '@/store/useCatalogStore'
 import { likeCount, useEngagementStore } from '@/store/useEngagementStore'
-import type { CustomOrder } from '@/types'
+import type { AccountUser, CustomOrder, Role } from '@/types'
 
-type Tab = 'orders' | 'saved' | 'settings'
+type Tab = 'works' | 'saved' | 'orders' | 'settings'
 
 const regions = ['Ашхабад', 'Ахал', 'Мары', 'Лебап', 'Дашогуз', 'Балкан']
 
+const specialties = ['Полиграфия', 'Логотипы и фирменный стиль', 'Сувениры и мерч', 'Упаковка', 'Другое']
+
 const tabs: { id: Tab; label: string }[] = [
-  { id: 'orders', label: 'История заказов' },
+  { id: 'works', label: 'Работы' },
   { id: 'saved', label: 'Сохранённые' },
+  { id: 'orders', label: 'История заказов' },
   { id: 'settings', label: 'Настройки' },
 ]
 
@@ -74,20 +78,25 @@ function readAvatar(file: File) {
 export function AccountPage() {
   const router = useRouter()
   const user = useAuthStore((state) => state.user)
+  const users = useAuthStore((state) => state.users)
   const following = useFollowStore((state) => state.following)
+  const forgetFollows = useFollowStore((state) => state.forgetUser)
   const logout = useAuthStore((state) => state.logout)
+  const deleteAccount = useAuthStore((state) => state.deleteAccount)
   const updateProfile = useAuthStore((state) => state.updateProfile)
   const changePassword = useAuthStore((state) => state.changePassword)
-  const setRole = useAuthStore((state) => state.setRole)
+  const applyDesigner = useAuthStore((state) => state.applyDesigner)
   const orders = useAccountStore((state) => state.orders)
   const favorites = useAccountStore((state) => state.favorites)
   const toggleFavorite = useAccountStore((state) => state.toggleFavorite)
+  const forgetOrders = useAccountStore((state) => state.forgetUser)
   const products = useCatalogStore((state) => state.products)
+  const removeByAuthor = useCatalogStore((state) => state.removeByAuthor)
   const views = useEngagementStore((state) => state.views)
   const likes = useEngagementStore((state) => state.likes)
   const addView = useEngagementStore((state) => state.addView)
   const toggleLike = useEngagementStore((state) => state.toggleLike)
-  const [tab, setTab] = useState<Tab>('orders')
+  const [tab, setTab] = useState<Tab>('works')
   const [openOrderId, setOpenOrderId] = useState<string | null>(null)
   const [previewId, setPreviewId] = useState<string | null>(null)
   const [first, setFirst] = useState('')
@@ -109,11 +118,32 @@ export function AccountPage() {
   const [designerOpen, setDesignerOpen] = useState(false)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [acceptPrivacy, setAcceptPrivacy] = useState(false)
+  const [requestHandle, setRequestHandle] = useState('@')
+  const [specialty, setSpecialty] = useState('')
+  const [about, setAbout] = useState('')
+  const [requestError, setRequestError] = useState('')
+  const [people, setPeople] = useState<'followers' | 'following' | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deletePhrase, setDeletePhrase] = useState('')
   const preview = products.find((item) => item.id === previewId) ?? null
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('tab') === 'settings') setTab('settings')
+    const next = new URLSearchParams(window.location.search).get('tab')
+    if (next === 'settings' || next === 'orders' || next === 'saved' || next === 'works') setTab(next)
   }, [])
+
+  useEffect(() => {
+    function leave() {
+      const current = useAuthStore.getState().user
+      if (!current) router.replace('/login')
+      else if (isStaff(current.role)) router.replace(dashboardFor(current.role))
+    }
+    if (useAuthStore.persist.hasHydrated()) {
+      leave()
+      return
+    }
+    return useAuthStore.persist.onFinishHydration(leave)
+  }, [user, router])
 
   useEffect(() => {
     if (!user) return
@@ -128,37 +158,48 @@ export function AccountPage() {
     setAddress(user.address)
   }, [user?.id, user?.name, user?.email, user?.handle, user?.role, user?.phone, user?.city, user?.company, user?.address])
 
-  if (!user) {
-    return (
-      <div className="min-h-svh bg-white">
-        <ProfileBar onBack={() => router.back()} />
-        <Gate
-          title="Войдите в профиль"
-          text="Здесь будут имя, почта, история заказов и сохранённые макеты."
-          action={
-            <Link href="/login?from=%2Faccount" className={buttonClass()}>
-              Войти
-            </Link>
-          }
-        />
-      </div>
-    )
-  }
+  if (!user) return null
+  if (isStaff(user.role)) return null
 
   const mineOrders = orders.filter(
     (item) => item.userId === user.id || item.email.toLowerCase() === user.email.toLowerCase(),
   )
+  const newestOrderId = mineOrders.reduce<CustomOrder | null>(
+    (latest, order) => (!latest || order.createdAt > latest.createdAt ? order : latest),
+    null,
+  )?.id
   const saved = (favorites[user.id] ?? [])
     .map((id) => products.find((product) => product.id === id && product.status === 'published'))
     .filter((item) => item != null)
+  const works = products.filter((item) => item.authorId === user.id && item.status === 'published')
   const parts = splitName(user.name)
   const initials = `${parts.first[0] ?? ''}${parts.last[0] ?? ''}`.toUpperCase() || 'A'
   const designer = user.role === 'seller' || user.role === 'admin'
-  const subscriptions = (following[user.id] ?? []).length
-  const followers = followerCount(following, user.id)
+  const username = user.handle ? (user.handle.startsWith('@') ? user.handle : `@${user.handle}`) : ''
+  const followingPeople = accountsByIds(users, following[user.id] ?? [])
+  const followerPeople = accountsByIds(
+    users,
+    Object.entries(following)
+      .filter(([, ids]) => ids.includes(user.id))
+      .map(([id]) => id),
+  )
+  const subscriptions = followingPeople.length
+  const followers = followerPeople.length
   const viewTotal = products
     .filter((item) => item.authorId === user.id)
     .reduce((sum, item) => sum + (views[item.id] ?? 0) + (item.status === 'published' ? Math.round(item.downloads * 0.18) : 0), 0)
+
+  function confirmDelete(event: FormEvent) {
+    event.preventDefault()
+    const phrase = (username || user.email).trim()
+    if (deletePhrase.trim() !== phrase) return
+    removeByAuthor(user.id)
+    forgetOrders(user.id)
+    forgetFollows(user.id)
+    deleteAccount()
+    setDeleteOpen(false)
+    router.push('/')
+  }
 
   async function onAvatar(file: File | undefined) {
     if (!file) return
@@ -214,6 +255,30 @@ export function AccountPage() {
     setPasswordNote('Пароль изменён')
   }
 
+  function openDesignerForm() {
+    const previous = user?.designerRequest
+    setRequestHandle(previous?.handle || '@')
+    setSpecialty(previous?.specialty ?? '')
+    setAbout(previous?.about ?? '')
+    setRequestError('')
+    setAcceptTerms(false)
+    setAcceptPrivacy(false)
+    setDesignerOpen(true)
+  }
+
+  function sendDesignerRequest(event: FormEvent) {
+    event.preventDefault()
+    const message = applyDesigner({ handle: requestHandle, specialty, about })
+    if (message) {
+      setRequestError(message)
+      return
+    }
+    setDesignerOpen(false)
+    setTab('settings')
+  }
+
+  const request = user.designerRequest
+
   return (
     <div className="min-h-svh bg-white">
       <ProfileBar onBack={() => router.back()} />
@@ -240,13 +305,18 @@ export function AccountPage() {
             <h1 className="truncate text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
               {[parts.first, parts.last].filter(Boolean).join(' ')}
             </h1>
+            {designer && username && <p className="mt-1 text-sm font-medium text-slate-500">{username}</p>}
             {designer ? (
               <p className="mt-1 text-sm leading-6 text-slate-500">
-                <span className="font-semibold text-slate-950">{followers}</span>{' '}
-                {plural(followers, 'подписчик', 'подписчика', 'подписчиков')}
+                <button type="button" onClick={() => setPeople('followers')} className="hover:text-slate-950">
+                  <span className="font-semibold text-slate-950">{followers}</span>{' '}
+                  {plural(followers, 'подписчик', 'подписчика', 'подписчиков')}
+                </button>
                 <span className="px-2 text-slate-300">·</span>
-                <span className="font-semibold text-slate-950">{subscriptions}</span>{' '}
-                {plural(subscriptions, 'подписка', 'подписки', 'подписок')}
+                <button type="button" onClick={() => setPeople('following')} className="hover:text-slate-950">
+                  <span className="font-semibold text-slate-950">{subscriptions}</span>{' '}
+                  {plural(subscriptions, 'подписка', 'подписки', 'подписок')}
+                </button>
                 <span className="px-2 text-slate-300">·</span>
                 <span className="font-semibold text-slate-950">{viewTotal}</span>{' '}
                 {plural(viewTotal, 'просмотр', 'просмотра', 'просмотров')}
@@ -254,23 +324,28 @@ export function AccountPage() {
             ) : (
               <p className="mt-1 truncate text-slate-500">{user.email}</p>
             )}
-            {designer && user.handle && (
-              <p className="mt-1 text-sm text-slate-500">
-                ID <span className="font-semibold text-slate-950">{user.handle}</span>
-              </p>
-            )}
           </div>
         </div>
 
         {user.role === 'buyer' ? (
-          <Link href="/templates?section=orders" className="inline-flex h-11 items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
-            Оформить заказ
+          request?.status === 'pending' ? (
+            <span className="inline-flex h-11 items-center rounded-full bg-amber-50 px-5 text-sm font-semibold text-amber-700">
+              Заявка на проверке
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={openDesignerForm}
+              className="inline-flex h-11 items-center rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:brightness-110"
+            >
+              Стать дизайнером
+            </button>
+          )
+        ) : (
+          <Link href="/seller" className="inline-flex h-11 items-center rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:brightness-110">
+            Кабинет
           </Link>
-        ) : user.role === 'seller' ? (
-          <Link href="/seller" className="inline-flex h-11 items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
-            Кабинет дизайнера
-          </Link>
-        ) : null}
+        )}
       </header>
 
       <div role="tablist" className="mt-10 flex gap-6 border-b border-slate-200">
@@ -287,11 +362,36 @@ export function AccountPage() {
             )}
           >
             {item.label}
+            {item.id === 'works' && <span className="ml-1.5 text-slate-400">{works.length}</span>}
             {item.id === 'orders' && <span className="ml-1.5 text-slate-400">{mineOrders.length}</span>}
             {item.id === 'saved' && <span className="ml-1.5 text-slate-400">{saved.length}</span>}
           </button>
         ))}
       </div>
+
+      {tab === 'works' && (
+        <section className="pt-6" role="tabpanel">
+          {works.length === 0 ? (
+            <p className="py-16 text-center text-sm text-slate-500">Опубликованных работ пока нет.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {works.map((product) => (
+                <button
+                  key={product.id}
+                  type="button"
+                  onClick={() => {
+                    addView(product.id)
+                    setPreviewId(product.id)
+                  }}
+                  className="relative aspect-square overflow-hidden rounded-[22px] bg-[#6f7874]"
+                >
+                  <img src={product.image || cardPreview.src} alt="" className="size-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {tab === 'orders' && (
         <section className="pt-2" role="tabpanel">
@@ -308,6 +408,7 @@ export function AccountPage() {
                 <OrderRow
                   key={order.id}
                   order={order}
+                  fresh={order.id === newestOrderId}
                   open={openOrderId === order.id}
                   productTitle={products.find((item) => item.id === order.productId)?.title}
                   onToggle={() => setOpenOrderId((current) => (current === order.id ? null : order.id))}
@@ -342,40 +443,44 @@ export function AccountPage() {
                       }}
                       className="absolute inset-0"
                     >
-                      <img src={cardPreview.src} alt="" className="size-full object-cover" />
+                      <img src={product.image || cardPreview.src} alt="" className="size-full object-cover" />
                     </button>
                     <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100">
                       <button
                         type="button"
                         aria-label="Похожие"
                         onClick={() => router.push(isPrintWork(product) ? '/templates?section=gallery' : '/templates')}
-                        className="pointer-events-none absolute left-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
+                        className="group/tip pointer-events-none absolute left-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
                       >
                         <MdOutlineImageSearch className="size-5" />
+                        <IconTip label="Похожие" side="right" />
                       </button>
                       <button
                         type="button"
                         aria-label="Убрать из сохранённых"
                         aria-pressed
                         onClick={() => toggleFavorite(user.id, product.id)}
-                        className="pointer-events-none absolute right-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
+                        className="group/tip pointer-events-none absolute right-3 top-3 grid size-10 place-items-center rounded-xl bg-[#4a4a4a] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
                       >
                         <Bookmark className="size-5 fill-white" />
+                        <IconTip label="Сохранено" side="left" />
                       </button>
                       <div className="absolute bottom-3 left-3 flex gap-2">
-                        <span className="flex h-8 items-center gap-1.5 rounded-full bg-[#4a4a4a] px-3 text-sm font-medium text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)]">
+                        <span className="group/tip relative flex h-8 items-center gap-1.5 rounded-full bg-[#4a4a4a] px-3 text-sm font-medium text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] group-hover:pointer-events-auto">
                           <Eye className="size-4" />
                           {views[product.id] ?? 0}
+                          <IconTip label="Просмотры" side="up" />
                         </span>
                         <button
                           type="button"
                           aria-label={liked ? 'Убрать лайк' : 'Лайк'}
                           aria-pressed={liked}
                           onClick={() => toggleLike(user.id, product.id)}
-                          className="pointer-events-none flex h-8 items-center gap-1.5 rounded-full bg-[#4a4a4a] px-3 text-sm font-medium text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
+                          className="group/tip pointer-events-none relative flex h-8 items-center gap-1.5 rounded-full bg-[#4a4a4a] px-3 text-sm font-medium text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] transition duration-300 ease-out group-hover:pointer-events-auto hover:bg-[#3a3a3a]"
                         >
                           <Heart className={cn('size-4', liked && 'fill-white')} />
                           {likeCount(likes, product.id)}
+                          <IconTip label={liked ? 'Убрать лайк' : 'Лайк'} side="up" />
                         </button>
                       </div>
                     </div>
@@ -399,14 +504,14 @@ export function AccountPage() {
             {(user.role === 'seller' || user.role === 'admin') && (
               <Input
                 id="designer-handle"
-                label="ID"
+                label="Имя пользователя"
                 required
                 value={handle.startsWith('@') ? handle : `@${handle}`}
                 placeholder="@studio"
                 autoComplete="off"
                 spellCheck={false}
                 pattern="@[A-Za-z0-9_]{2,24}"
-                title="ID начинается с @. Дальше латинские буквы, цифры или _"
+                title="Имя пользователя начинается с @. Дальше латинские буквы, цифры или _"
                 onChange={(event) => setHandle(normalizeHandle(event.target.value) || '@')}
               />
             )}
@@ -437,7 +542,7 @@ export function AccountPage() {
             )}
             {profileError && <p className="text-sm text-rose-600">{profileError}</p>}
             {profileNote && <p className="text-sm text-emerald-600">{profileNote}</p>}
-            <button type="submit" className="h-11 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
+            <button type="submit" className="h-11 rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:brightness-110">
               Сохранить
             </button>
           </form>
@@ -473,61 +578,145 @@ export function AccountPage() {
             />
             {passwordError && <p className="text-sm text-rose-600">{passwordError}</p>}
             {passwordNote && <p className="text-sm text-emerald-600">{passwordNote}</p>}
-            <button type="submit" className="h-11 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
+            <button type="submit" className="h-11 rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:brightness-110">
               Сменить пароль
             </button>
           </form>
 
+          {user.role !== 'superadmin' && (
           <div className="grid gap-3 border-t border-slate-200 pt-8">
             <h2 className="text-lg font-semibold text-slate-950">Дизайнер</h2>
             <p className="text-sm leading-6 text-slate-500">
               Загружайте шаблоны и смотрите, какие работы на проверке, одобрены или отклонены.
             </p>
-            {(user.role === 'seller' || user.role === 'admin') && user.handle && (
-              <p className="text-sm text-slate-500">
-                ID дизайнера <span className="font-semibold text-slate-950">{user.handle}</span>
-              </p>
-            )}
             {user.role === 'seller' || user.role === 'admin' ? (
               /^@[A-Za-z0-9_]{2,24}$/.test(user.handle) ? (
-                <Link href="/seller" className="inline-flex h-11 w-fit items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
+                <Link href="/seller" className="inline-flex h-11 w-fit items-center rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:brightness-110">
                   Открыть кабинет дизайнера
                 </Link>
               ) : (
-                <p className="text-sm text-rose-600">Сохраните ID. Без него кабинет не откроется.</p>
+                <p className="text-sm text-rose-600">Сохраните имя пользователя. Без него кабинет не откроется.</p>
               )
+            ) : request?.status === 'pending' ? (
+              <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                Заявка с именем <span className="font-semibold">{request.handle}</span> отправлена {formatDate(request.createdAt)} и ждёт проверки администратором.
+                После одобрения откроется кабинет дизайнера.
+              </p>
             ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setAcceptTerms(false)
-                  setAcceptPrivacy(false)
-                  setDesignerOpen(true)
-                }}
-                className="h-11 w-fit rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700"
-              >
-                Стать дизайнером
-              </button>
+              <>
+                {request?.status === 'rejected' && (
+                  <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700">
+                    Заявка отклонена.{request.note ? ` ${request.note}` : ''} Можно исправить данные и отправить снова.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={openDesignerForm}
+                  className="h-11 w-fit rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:brightness-110"
+                >
+                  {request?.status === 'rejected' ? 'Подать заявку снова' : 'Стать дизайнером'}
+                </button>
+              </>
             )}
           </div>
+          )}
 
-          <button
-            type="button"
-            onClick={logout}
-            className="h-11 w-fit rounded-full border border-rose-200 px-5 text-sm font-semibold text-rose-500 hover:bg-rose-50"
-          >
-            Выйти
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                logout()
+                router.push('/login')
+              }}
+              className="h-11 rounded-xl border border-rose-200 px-5 text-sm font-semibold text-rose-500 hover:bg-rose-50"
+            >
+              Выйти
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDeletePhrase('')
+                setDeleteOpen(true)
+              }}
+              className="h-11 rounded-xl border border-rose-200 px-5 text-sm font-semibold text-rose-500 hover:bg-rose-50"
+            >
+              Удалить аккаунт
+            </button>
+          </div>
         </section>
       )}
+
+      <Modal open={deleteOpen} title="Удалить аккаунт" onClose={() => setDeleteOpen(false)}>
+        <form className="grid max-w-lg gap-4 text-sm leading-6 text-slate-600" onSubmit={confirmDelete}>
+          <p>
+            Профиль <span className="font-semibold text-slate-950">{user.name}</span> будет удалён вместе с работами и заказами. Вернуть аккаунт будет нельзя.
+          </p>
+          <p>
+            Чтобы подтвердить, введите <span className="font-semibold text-slate-950">{username || user.email}</span>
+          </p>
+          <input
+            value={deletePhrase}
+            onChange={(event) => setDeletePhrase(event.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={username || user.email}
+            className="h-11 rounded-xl border border-slate-200 px-3 text-slate-950 outline-none focus:border-slate-400"
+          />
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={() => setDeleteOpen(false)} className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-700">
+              Отмена
+            </button>
+            <button
+              type="submit"
+              disabled={deletePhrase.trim() !== (username || user.email).trim()}
+              className="h-11 rounded-xl bg-rose-600 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-rose-200"
+            >
+              Удалить аккаунт
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={people !== null}
+        title={people === 'followers' ? 'Подписчики' : 'Подписки'}
+        onClose={() => setPeople(null)}
+      >
+        <PeopleList people={people === 'followers' ? followerPeople : followingPeople} empty={people === 'followers' ? 'Подписчиков пока нет.' : 'Подписок пока нет.'} />
+      </Modal>
 
       <Modal
         open={designerOpen}
         title="Стать дизайнером"
         onClose={() => setDesignerOpen(false)}
       >
-        <div className="grid gap-4 text-sm leading-6 text-slate-600">
-          <p>Кабинет откроется после согласия с условиями и политикой конфиденциальности.</p>
+        <form className="grid gap-4 text-sm leading-6 text-slate-600" onSubmit={sendDesignerRequest}>
+          <p>Заявку проверит администратор. После одобрения откроется кабинет дизайнера с портфолио и загрузкой работ.</p>
+          <Input
+            label="Имя пользователя"
+            required
+            value={requestHandle.startsWith('@') ? requestHandle : `@${requestHandle}`}
+            placeholder="@studio"
+            autoComplete="off"
+            spellCheck={false}
+            pattern="@[A-Za-z0-9_]{2,24}"
+            title="Имя пользователя начинается с @. Дальше латинские буквы, цифры или _"
+            onChange={(event) => setRequestHandle(normalizeHandle(event.target.value) || '@')}
+          />
+          <Select label="Направление" placeholder="Выберите направление" value={specialty} onChange={(event) => setSpecialty(event.target.value)}>
+            {specialties.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </Select>
+          <TextArea
+            label="О себе и ссылка на портфолио"
+            placeholder="Чем занимаетесь, опыт, ссылка на Behance или Instagram"
+            maxLength={600}
+            value={about}
+            onChange={(event) => setAbout(event.target.value)}
+          />
           <div className="grid gap-3 rounded-2xl bg-slate-50 p-4">
             <p className="font-semibold text-slate-950">Условия для дизайнеров</p>
             <p>Макет уходит на проверку. Одобренный появляется в каталоге, отклонённый остаётся у вас со статусом. Нельзя загружать чужие работы и скрывать лицензию.</p>
@@ -542,24 +731,15 @@ export function AccountPage() {
             <input type="checkbox" className="mt-1 size-4 accent-blue-600" checked={acceptPrivacy} onChange={(event) => setAcceptPrivacy(event.target.checked)} />
             Принимаю политику конфиденциальности
           </label>
+          {requestError && <p className="text-sm text-rose-600">{requestError}</p>}
           <button
-            type="button"
-            disabled={!acceptTerms || !acceptPrivacy}
-            onClick={() => {
-              setRole(user.id, 'seller')
-              setDesignerOpen(false)
-              if (/^@[A-Za-z0-9_]{2,24}$/.test(user.handle)) {
-                router.push('/seller')
-                return
-              }
-              setTab('settings')
-              window.setTimeout(() => document.getElementById('designer-handle')?.focus(), 50)
-            }}
-            className="h-11 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            type="submit"
+            disabled={!acceptTerms || !acceptPrivacy || !specialty}
+            className="h-11 rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            Перейти в кабинет
+            Отправить заявку
           </button>
-        </div>
+        </form>
       </Modal>
 
       <PreviewModal product={preview} onClose={() => setPreviewId(null)} />
@@ -590,12 +770,14 @@ function ProfileBar({ onBack }: { onBack: () => void }) {
 
 function OrderRow({
   order,
+  fresh,
   open,
   productTitle,
   onToggle,
   onOpenProduct,
 }: {
   order: CustomOrder
+  fresh: boolean
   open: boolean
   productTitle?: string
   onToggle: () => void
@@ -609,12 +791,15 @@ function OrderRow({
     paper: 'Бумага',
     company: 'Компания',
     deadline: 'Срок сдачи',
+    edges: 'Края',
+    sides: 'Стороны',
   }
   const briefValues: Record<string, string> = {
     upload: 'Загруженный файл',
     catalog: 'Каталог',
   }
   const brief = Object.entries(order.brief).filter(([, value]) => value.trim())
+  const statusLabel = order.status === 'new' && !fresh ? null : ORDER_STATUS_LABEL[order.status]
 
   return (
     <article className="border-b border-slate-200">
@@ -627,14 +812,17 @@ function OrderRow({
             {formatDate(order.createdAt)} · {order.quantity} шт. · {formatPrice(order.price)}
           </p>
         </div>
-        <Badge tone={order.status === 'done' ? 'ok' : order.status === 'cancelled' ? 'bad' : 'info'}>
-          {ORDER_STATUS_LABEL[order.status]}
-        </Badge>
+        {statusLabel && (
+          <Badge tone={order.status === 'issued' ? 'ok' : order.status === 'ready' ? 'pending' : order.status === 'cancelled' ? 'bad' : 'info'}>
+            {statusLabel}
+          </Badge>
+        )}
       </button>
       {open && (
         <dl className="grid gap-x-8 gap-y-3 pb-5 text-sm sm:grid-cols-2">
+          <PickupPass order={order} className="sm:col-span-2" />
           <Detail label="Номер" value={order.id} />
-          <Detail label="Статус" value={ORDER_STATUS_LABEL[order.status]} />
+          {statusLabel && <Detail label="Статус" value={statusLabel} />}
           <Detail label="Услуга" value={service} />
           <Detail label="Тип" value={order.subtype} />
           <Detail label="Тариф" value={tariff} />
@@ -685,5 +873,33 @@ function Detail({ label, value }: { label: string; value: string }) {
       <dt className="text-slate-400">{label}</dt>
       <dd className="mt-0.5 text-slate-800">{value}</dd>
     </div>
+  )
+}
+
+function accountsByIds(users: AccountUser[], ids: string[]) {
+  return ids.flatMap((id) => {
+    const account = users.find((item) => item.id === id)
+    return account ? [account] : []
+  })
+}
+
+function audienceKind(role: Role) {
+  return role === 'seller' || role === 'admin' ? 'Дизайнер' : 'Пользователь'
+}
+
+function PeopleList({ people, empty }: { people: AccountUser[]; empty: string }) {
+  if (people.length === 0) return <p className="text-sm text-slate-500">{empty}</p>
+  return (
+    <ul className="grid max-w-lg gap-2">
+      {people.map((person) => (
+        <li key={person.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-slate-950">{person.name}</p>
+            {person.handle && <p className="truncate text-sm text-slate-500">{person.handle}</p>}
+          </div>
+          <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600">{audienceKind(person.role)}</span>
+        </li>
+      ))}
+    </ul>
   )
 }

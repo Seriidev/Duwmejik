@@ -12,6 +12,7 @@ const baseFollowers: Record<string, number> = {
 interface FollowState {
   following: Record<string, string[]>
   toggle: (userId: string, designerId: string) => void
+  forgetUser: (userId: string) => void
 }
 
 export const useFollowStore = create<FollowState>()(
@@ -22,6 +23,14 @@ export const useFollowStore = create<FollowState>()(
         const current = get().following[userId] ?? []
         const next = current.includes(designerId) ? current.filter((id) => id !== designerId) : [...current, designerId]
         set({ following: { ...get().following, [userId]: next } })
+      },
+      forgetUser: (userId) => {
+        const following: Record<string, string[]> = {}
+        for (const [id, ids] of Object.entries(get().following)) {
+          if (id === userId) continue
+          following[id] = ids.filter((item) => item !== userId)
+        }
+        set({ following })
       },
     }),
     { name: 'duwmejik-follows' },

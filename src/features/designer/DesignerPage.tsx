@@ -7,8 +7,12 @@ import { useState } from 'react'
 import cardPreview from '@/assets/card-preview.jpg'
 import logoBell from '@/assets/logo-bell.png'
 import { PreviewModal } from '@/features/catalog/PreviewModal'
+import { BestBadge } from '@/features/designers/BestMarks'
+import { cn } from '@/lib/cn'
+import { authHref, isStaff } from '@/lib/authHref'
 import { likeCount, useEngagementStore } from '@/store/useEngagementStore'
 import { useAuthStore } from '@/store/useAuthStore'
+import { useAccountStore } from '@/store/useAccountStore'
 import { useCatalogStore } from '@/store/useCatalogStore'
 import { followerCount, isFollowing, useFollowStore } from '@/store/useFollowStore'
 import type { Product } from '@/types'
@@ -20,19 +24,21 @@ export function DesignerPage() {
   const user = useAuthStore((state) => state.user)
   const accounts = useAuthStore((state) => state.users)
   const products = useCatalogStore((state) => state.products)
+  const favorites = useAccountStore((state) => state.favorites)
   const views = useEngagementStore((state) => state.views)
   const likes = useEngagementStore((state) => state.likes)
   const addView = useEngagementStore((state) => state.addView)
   const following = useFollowStore((state) => state.following)
   const toggle = useFollowStore((state) => state.toggle)
   const [previewId, setPreviewId] = useState<string | null>(null)
+  const [tab, setTab] = useState<'works' | 'saved'>('works')
 
   const works = products.filter((item) => item.authorId === id && item.status === 'published')
-  const liked = (likes[id] ?? [])
+  const saved = (favorites[id] ?? [])
     .map((productId) => products.find((item) => item.id === productId && item.status === 'published'))
     .filter((item): item is Product => Boolean(item))
   const account = accounts.find((item) => item.id === id)
-  const name = account?.name || works[0]?.author
+  const name = account && isStaff(account.role) ? '' : account?.name || works[0]?.author
   const preview = products.find((item) => item.id === previewId) ?? null
 
   if (!name) {
@@ -52,7 +58,7 @@ export function DesignerPage() {
 
   function follow() {
     if (!user) {
-      router.push(`/login?from=${encodeURIComponent(`/designer/${id}`)}`)
+      router.push(authHref(`/designer/${id}`))
       return
     }
     toggle(user.id, id)
@@ -73,11 +79,8 @@ export function DesignerPage() {
           </span>
           <div className="min-w-0">
             <h1 className="truncate text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">{name}</h1>
-            {account?.handle && (
-              <p className="mt-1 text-sm text-slate-500">
-                ID <span className="font-semibold text-slate-950">{account.handle}</span>
-              </p>
-            )}
+            <BestBadge designerId={id} />
+            {account?.handle && <p className="mt-1 text-sm font-medium text-slate-500">{account.handle}</p>}
             <p className="mt-2 text-sm text-slate-500">
               <span className="font-semibold text-slate-950">{compact(followers)}</span> подписчиков
               <span className="px-2 text-slate-300">·</span>
@@ -93,22 +96,51 @@ export function DesignerPage() {
             onClick={follow}
             className={
               followed
-                ? 'mt-5 inline-flex h-11 items-center rounded-full border border-slate-200 px-5 text-sm font-semibold text-slate-800'
-                : 'mt-5 inline-flex h-11 items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700'
+                ? 'mt-5 inline-flex h-11 items-center rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-800'
+                : 'mt-5 inline-flex h-11 items-center rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:brightness-110'
             }
           >
             {followed ? 'Вы подписаны' : 'Подписаться'}
           </button>
         )}
 
-        <h2 className="mt-10 text-lg font-semibold text-slate-950">Работы</h2>
-        <Cards products={works} empty="Опубликованных работ пока нет." onOpen={openCard} />
-
-        <h2 className="mt-10 text-lg font-semibold text-slate-950">Лайкнутые</h2>
-        <Cards products={liked} empty="Пока нет лайкнутых картинок." onOpen={openCard} />
+        <div role="tablist" className="mt-10 flex gap-6 border-b border-slate-200">
+          <ProfileTab active={tab === 'works'} label="Работы" count={works.length} onClick={() => setTab('works')} />
+          <ProfileTab active={tab === 'saved'} label="Сохранённые" count={saved.length} onClick={() => setTab('saved')} />
+          {mine && (
+            <>
+              <Link href="/account?tab=orders" className="-mb-px border-b-2 border-transparent pb-3 text-sm font-semibold text-slate-400 hover:text-slate-700">
+                История заказов
+              </Link>
+              <Link href="/account?tab=settings" className="-mb-px border-b-2 border-transparent pb-3 text-sm font-semibold text-slate-400 hover:text-slate-700">
+                Настройки
+              </Link>
+            </>
+          )}
+        </div>
+        {tab === 'works' ? (
+          <Cards products={works} empty="Опубликованных работ пока нет." onOpen={openCard} />
+        ) : (
+          <Cards products={saved} empty="Пока ничего не сохранено." onOpen={openCard} />
+        )}
       </div>
       <PreviewModal product={preview} onClose={() => setPreviewId(null)} />
     </div>
+  )
+}
+
+function ProfileTab({ active, label, count, onClick }: { active: boolean; label: string; count: number; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn('-mb-px border-b-2 pb-3 text-sm font-semibold', active ? 'border-slate-950 text-slate-950' : 'border-transparent text-slate-400 hover:text-slate-700')}
+    >
+      {label}
+      <span className="ml-1.5 text-slate-400">{count}</span>
+    </button>
   )
 }
 

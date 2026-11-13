@@ -69,16 +69,19 @@ export const PRODUCT_STATUS_LABEL: Record<ProductStatus, string> = {
 }
 
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
-  new: 'Новая',
+  new: 'Новый',
+  accepted: 'Принят',
   in_progress: 'В работе',
-  done: 'Готово',
-  cancelled: 'Отменена',
+  ready: 'Готов к выдаче',
+  issued: 'Выдан',
+  cancelled: 'Отменён',
 }
 
 export const ROLE_LABEL: Record<Role, string> = {
   buyer: 'Покупатель',
   seller: 'Дизайнер',
   admin: 'Админ',
+  superadmin: 'Суперадмин',
 }
 
 export function isFileType(value: string): value is (typeof FILE_TYPES)[number] {

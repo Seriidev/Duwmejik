@@ -1,25 +1,33 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import logoBell from '@/assets/logo-bell.png'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
+import { dashboardFor, isStaff, safeFrom } from '@/lib/authHref'
 import { useAuthStore } from '@/store/useAuthStore'
 
 export function LoginPage() {
+  const user = useAuthStore((state) => state.user)
   const login = useAuthStore((state) => state.login)
   const register = useAuthStore((state) => state.register)
   const router = useRouter()
-  const fromParam = useSearchParams().get('from')
-  const from = fromParam && fromParam.startsWith('/') && !fromParam.startsWith('//') ? fromParam : '/account'
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const params = useSearchParams()
+  const from = safeFrom(params.get('from'))
+  const [mode, setMode] = useState<'login' | 'register'>(params.get('mode') === 'register' ? 'register' : 'login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!user) return
+    if (from?.startsWith('/admin') && !isStaff(user.role)) return
+    router.replace(from ?? dashboardFor(user.role))
+  }, [user, from, router])
 
   function switchMode() {
     setMode((current) => (current === 'login' ? 'register' : 'login'))
@@ -29,12 +37,13 @@ export function LoginPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[70vh] max-w-md items-center px-4 py-12">
+    <div className="mx-auto flex min-h-svh max-w-md items-center px-4 py-12">
       <div className="w-full">
-        <h1 className="text-3xl font-semibold tracking-tight">{mode === 'login' ? 'Вход' : 'Регистрация'}</h1>
-        <p className="mt-2 text-sm text-muted">
-          {mode === 'login' ? 'Введите почту и пароль, чтобы открыть кабинет.' : 'Создайте аккаунт, чтобы сохранять макеты и оформлять заказы.'}
-        </p>
+        <div className="flex items-center gap-2 font-bold tracking-tight text-neutral-950">
+          <img src={logoBell.src} alt="" className="size-9 object-contain" />
+          <span className="text-[16px]">Duwmejik</span>
+        </div>
+        <h1 className="mt-6 text-3xl font-semibold tracking-tight">Добро пожаловать</h1>
         <Card className="mt-6 p-6">
           <form
             className="grid gap-4"
@@ -46,7 +55,6 @@ export function LoginPage() {
               }
               const message = mode === 'login' ? login(email, password) : register(name, email, password)
               if (message) setError(message)
-              else router.push(from)
             }}
           >
             {mode === 'register' && (
@@ -87,6 +95,9 @@ export function LoginPage() {
             <Button type="submit" className="w-full">
               {mode === 'login' ? 'Войти' : 'Создать аккаунт'}
             </Button>
+            <Button type="button" variant="secondary" className="w-full" onClick={() => router.back()}>
+              Назад
+            </Button>
           </form>
           <p className="mt-5 text-center text-sm text-muted">
             {mode === 'login' ? 'Нет аккаунта?' : 'Уже есть аккаунт?'}{' '}
@@ -95,9 +106,6 @@ export function LoginPage() {
             </button>
           </p>
         </Card>
-        <Link href="/" className="mt-5 inline-block text-sm text-muted">
-          На главную
-        </Link>
       </div>
     </div>
   )

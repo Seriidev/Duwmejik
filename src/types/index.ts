@@ -1,4 +1,4 @@
-export type Role = 'buyer' | 'seller' | 'admin'
+export type Role = 'buyer' | 'seller' | 'admin' | 'superadmin'
 
 export type FileType = 'PSD' | 'AI' | 'Figma' | 'PNG' | 'PDF'
 
@@ -16,13 +16,14 @@ export type ServiceType = 'print' | 'souvenir' | 'graphic' | 'identity' | 'laser
 
 export type TariffId = 'basic' | 'standard' | 'premium'
 
-export type OrderStatus = 'new' | 'in_progress' | 'done' | 'cancelled'
+export type OrderStatus = 'new' | 'accepted' | 'in_progress' | 'ready' | 'issued' | 'cancelled'
 
 export interface Category {
   id: string
   title: string
   color: string
   blurb: string
+  unitPrice: number
 }
 
 export interface Product {
@@ -47,6 +48,7 @@ export interface Product {
   image?: string
   gallery?: string[]
   source?: SourceTool
+  reviewNote?: string
 }
 
 export interface ProductDraft {
@@ -65,6 +67,17 @@ export interface ProductDraft {
   source?: SourceTool
 }
 
+export type DesignerRequestStatus = 'pending' | 'rejected'
+
+export interface DesignerRequest {
+  handle: string
+  specialty: string
+  about: string
+  status: DesignerRequestStatus
+  note: string
+  createdAt: string
+}
+
 export interface SessionUser {
   id: string
   name: string
@@ -76,6 +89,7 @@ export interface SessionUser {
   address: string
   handle: string
   avatar?: string
+  designerRequest?: DesignerRequest
 }
 
 export interface AccountUser extends SessionUser {
@@ -108,5 +122,8 @@ export interface CustomOrder {
   references: string[]
   brief: Record<string, string>
   productId?: string
+  categoryId?: string
+  pickupCode: string
   createdAt: string
+  issuedAt?: string
 }

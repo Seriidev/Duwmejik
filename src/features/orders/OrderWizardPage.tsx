@@ -3,17 +3,23 @@
 import { Check, CircleCheck, Copy, Download, Gift, Image as ImageIcon, LayoutGrid, Palette, PenTool, Printer, ScanLine, Upload } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
-import QRCode from 'qrcode'
 import { SmoothSelect } from '@/components/ui/SmoothSelect'
-import { estimate, SERVICE_ORDER, SERVICES } from '@/features/orders/pricing'
-import { createId } from '@/lib/format'
+import { PickupPass, prepaySplit } from '@/features/orders/PickupPass'
+import { quoteOrder, SERVICE_ORDER, SERVICES, SUBTYPE_CATEGORY } from '@/features/orders/pricing'
+import { createId, formatDate } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { useAccountStore } from '@/store/useAccountStore'
+import { formatPickupCode, useAccountStore } from '@/store/useAccountStore'
 import { useAuthStore } from '@/store/useAuthStore'
+import { useCatalogStore } from '@/store/useCatalogStore'
+import { usePriceStore } from '@/store/usePriceStore'
 import type { CustomOrder, Product, ServiceType } from '@/types'
 
 const FORMATS = ['90×50 or A4', '90×50', 'A6', 'A5', 'A4', 'A3']
 const PAPERS = ['Мелованная 300', 'Мелованная 170', 'Офсетная 80', 'Картон']
+const CARD_SIZES = ['90×50 мм', '85×55 мм']
+const CARD_PAPERS = ['Меловка 300 г/м²', 'Меловка 250 г/м²', 'Меловка 150 г/м²', 'Дизайнерская']
+const CARD_EDGES = ['Квадратные', 'Круглые']
+const CARD_SIDES = ['Односторонние', 'Двухсторонние']
 
 const productCovers: Record<string, string> = {
   'tpl-card-nord': '/products/nord.jpg',
@@ -93,6 +99,13 @@ const presets: Record<string, { service: ServiceType; subtype: string; format: s
   packaging: { service: 'graphic', subtype: 'Упаковка', format: 'A4', paper: 'Картон', quantity: 100 },
 }
 
+function daysUntil(day: string) {
+  const target = new Date(`${day}T12:00:00`)
+  const today = new Date()
+  today.setHours(12, 0, 0, 0)
+  return Math.max(0, Math.round((target.getTime() - today.getTime()) / 86400000))
+}
+
 function money(price: number) {
   return `${new Intl.NumberFormat('ru-RU').format(price)} TMT`
 }
@@ -113,17 +126,22 @@ export function OrderWizardPage({
   const router = useRouter()
   const user = useAuthStore((state) => state.user)
   const addOrder = useAccountStore((state) => state.addOrder)
+  const categories = useCatalogStore((state) => state.categories)
+  const serviceBase = usePriceStore((state) => state.serviceBase)
   const [service, setService] = useState<ServiceType>('print')
   const [subtype, setSubtype] = useState('Визитки')
-  const [quantity, setQuantity] = useState(100)
-  const [format, setFormat] = useState(FORMATS[0])
-  const [paper, setPaper] = useState(PAPERS[0])
+  const [quantityInput, setQuantityInput] = useState('100')
+  const [format, setFormat] = useState(CARD_SIZES[0])
+  const [paper, setPaper] = useState(CARD_PAPERS[0])
+  const [edges, setEdges] = useState(CARD_EDGES[0])
+  const [sides, setSides] = useState(CARD_SIDES[0])
+  const [customDate, setCustomDate] = useState('')
   const [comment, setComment] = useState('')
   const [files, setFiles] = useState<string[]>([])
   const [name, setName] = useState(user?.name ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
   const [phone, setPhone] = useState('')
-  const [deadline, setDeadline] = useState<(typeof deadlines)[number]['id']>('usual')
+  const [deadline, setDeadline] = useState<string>('usual')
   const [error, setError] = useState('')
   const [created, setCreated] = useState<CustomOrder | null>(null)
   const [copied, setCopied] = useState(false)
@@ -131,6 +149,7 @@ export function OrderWizardPage({
   const [pickedId, setPickedId] = useState(selectedProduct?.id ?? '')
   const [pickedCover, setPickedCover] = useState(selectedProduct ? productCovers[selectedProduct.id] ?? '' : '')
   const [pickedFrom, setPickedFrom] = useState<'gallery' | 'templates' | null>(selectedFrom ?? null)
+  const [pickedCategory, setPickedCategory] = useState(selectedProduct?.categoryId ?? '')
 
   function applyDesign(product: Product) {
     const preset = presets[product.categoryId] ?? presets.cards
@@ -139,7 +158,7 @@ export function OrderWizardPage({
     setSubtype(preset.subtype)
     setFormat(preset.format)
     setPaper(preset.paper)
-    setQuantity(preset.quantity)
+    setQuantityInput(String(preset.quantity))
     setComment(product.description)
     setFiles([`${product.title}.${extension}`])
     setName(user?.name ?? name)
@@ -147,6 +166,7 @@ export function OrderWizardPage({
     setPhone(user?.phone || phone)
     setPickedTitle(product.title)
     setPickedId(product.id)
+    setPickedCategory(product.categoryId)
     setPickedCover(productCovers[product.id] ?? '')
     setError('')
   }
@@ -157,11 +177,28 @@ export function OrderWizardPage({
     setPickedFrom(selectedFrom ?? null)
   }, [selectedProduct, selectedFrom])
 
-  const quote = estimate(service, 'standard', quantity)
+  const card = service === 'print' && subtype === 'Визитки'
+
+  useEffect(() => {
+    if (card) {
+      if (!CARD_SIZES.includes(format)) setFormat(CARD_SIZES[0])
+      if (!CARD_PAPERS.includes(paper)) setPaper(CARD_PAPERS[0])
+      return
+    }
+    if (!FORMATS.includes(format)) setFormat(FORMATS[0])
+    if (!PAPERS.includes(paper)) setPaper(PAPERS[0])
+  }, [card, format, paper])
+
+  const quantity = Math.max(1, Number(quantityInput) || 1)
+  const categoryId = pickedId ? pickedCategory : SUBTYPE_CATEGORY[subtype]
+  const category = categories.find((item) => item.id === categoryId)
+  const quote = quoteOrder({ service, quantity, category, serviceBase })
+  const split = prepaySplit(quote.price)
 
   function clearPicked() {
     setPickedTitle('')
     setPickedId('')
+    setPickedCategory('')
     setPickedCover('')
     setPickedFrom(null)
   }
@@ -173,16 +210,27 @@ export function OrderWizardPage({
     setError('')
   }
 
-  const due = deadlines.find((item) => item.id === deadline) ?? deadlines[0]
+  const presetDue = deadlines.find((item) => item.id === deadline) ?? deadlines[0]
+  const due =
+    deadline === 'custom'
+      ? {
+          title: customDate ? formatDate(`${customDate}T12:00:00`) : 'Свой срок',
+          days: customDate ? daysUntil(customDate) : 0,
+        }
+      : presetDue
   const previewSrc = (pickedId && productCovers[pickedId]) || previews[`${service}:${subtype}`] || '/categories/cards.jpg'
   const previewLabel = pickedTitle || `${SERVICES[service].title} · ${subtype}`
 
   function submit() {
+    if (card && deadline === 'custom' && !customDate) {
+      setError('Выберите дату сдачи')
+      return
+    }
     if (!name.trim() || !/^\S+@\S+\.\S+$/.test(email)) {
       setError('Нужны имя и настоящая почта')
       return
     }
-    const order: CustomOrder = {
+    const order = addOrder({
       id: createId('DU').toUpperCase(),
       userId: user?.id ?? 'guest',
       service,
@@ -197,11 +245,17 @@ export function OrderWizardPage({
       comment: comment.trim(),
       quantity,
       references: files,
-      brief: { source: files.length ? 'upload' : 'catalog', format, paper, deadline: due.title },
+      brief: {
+        source: files.length ? 'upload' : 'catalog',
+        format,
+        paper: card && paper === 'Дизайнерская' ? 'Дизайнерская (образцы в офисе)' : paper,
+        deadline: due.title,
+        ...(card ? { edges, sides } : {}),
+      },
       productId: pickedId || undefined,
+      categoryId: category?.id,
       createdAt: new Date().toISOString(),
-    }
-    addOrder(order)
+    })
     setCreated(order)
   }
 
@@ -222,7 +276,7 @@ export function OrderWizardPage({
     <Shell>
       <div className="grid items-stretch gap-3 lg:grid-cols-[228px_minmax(0,1fr)]">
         <div className="grid content-stretch gap-1.5 lg:h-full lg:grid-rows-7">
-          {SERVICE_ORDER.filter((id) => id !== 'laser').map((id) => (
+          {SERVICE_ORDER.map((id) => (
             <ServiceCard
               key={id}
               title={SERVICES[id].title}
@@ -246,46 +300,75 @@ export function OrderWizardPage({
             active={pickedFrom === 'templates'}
             onClick={() => (onOpenTemplates ? onOpenTemplates() : router.push('/templates?pick=templates'))}
           />
-          <ServiceCard
-            title={SERVICES.laser.title}
-            subtitle={SERVICES.laser.subtypes.slice(0, 2).join(', ')}
-            icon={serviceIcons.laser}
-            active={service === 'laser' && !pickedFrom}
-            onClick={() => pickService('laser')}
-          />
         </div>
 
         <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
-          <Field label="Изделие" className="lg:col-span-2 lg:col-start-1 lg:row-start-1">
-            <SmoothSelect
-              value={subtype}
-              options={SERVICES[service].subtypes}
-              onChange={(next) => {
-                setSubtype(next)
-                clearPicked()
-              }}
-            />
-          </Field>
+          {card ? (
+            <div className="grid grid-cols-2 gap-2.5 lg:col-span-2 lg:col-start-1 lg:row-start-1">
+              <Field label="Изделие">
+                <SmoothSelect
+                  value={subtype}
+                  options={SERVICES[service].subtypes}
+                  onChange={(next) => {
+                    setSubtype(next)
+                    clearPicked()
+                  }}
+                />
+              </Field>
+              <Field label="Размер">
+                <SmoothSelect value={format} options={CARD_SIZES} onChange={setFormat} />
+              </Field>
+            </div>
+          ) : (
+            <>
+              <Field label="Изделие" className="lg:col-span-2 lg:col-start-1 lg:row-start-1">
+                <SmoothSelect
+                  value={subtype}
+                  options={SERVICES[service].subtypes}
+                  onChange={(next) => {
+                    setSubtype(next)
+                    clearPicked()
+                  }}
+                />
+              </Field>
+              <Field label="Формат" className="lg:col-span-2 lg:col-start-1 lg:row-start-2">
+                <SmoothSelect value={format} options={FORMATS} onChange={setFormat} />
+              </Field>
+            </>
+          )}
           <div className="relative h-48 overflow-hidden rounded-2xl lg:col-start-3 lg:row-start-1 lg:row-end-5 lg:h-auto lg:min-h-0">
             <img src={previewSrc} alt={previewLabel} className="h-full w-full object-cover lg:absolute lg:inset-0" />
           </div>
-          <Field label="Формат" className="lg:col-span-2 lg:col-start-1 lg:row-start-2">
-            <SmoothSelect value={format} options={FORMATS} onChange={setFormat} />
-          </Field>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:contents">
-          <Field label="Бумага" className="lg:col-start-1 lg:row-start-3">
-            <SmoothSelect value={paper} options={PAPERS} onChange={setPaper} />
-          </Field>
-          <Field label="Тираж, шт." className="lg:col-start-2 lg:row-start-3">
+          <div className={cn('grid gap-1.5 lg:col-start-1', card ? 'lg:row-start-2' : 'lg:row-start-3')}>
+            <Field label="Бумага">
+              <SmoothSelect value={paper} options={card ? CARD_PAPERS : PAPERS} onChange={setPaper} />
+            </Field>
+            {card && paper === 'Дизайнерская' && <p className="text-xs text-slate-400">Образцы дизайнерской бумаги можно посмотреть только в офисе.</p>}
+          </div>
+          <Field label="Тираж, шт." className={cn('lg:col-start-2', card ? 'lg:row-start-2' : 'lg:row-start-3')}>
             <input
               className={control}
-              type="number"
-              min={1}
-              value={quantity}
-              onChange={(event) => setQuantity(Math.max(1, Number(event.target.value) || 1))}
+              inputMode="numeric"
+              autoComplete="off"
+              value={quantityInput}
+              onChange={(event) => setQuantityInput(event.target.value.replace(/\D/g, ''))}
+              onBlur={() => {
+                if (!quantityInput) setQuantityInput('1')
+              }}
             />
           </Field>
           </div>
+          {card && (
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:contents">
+              <Field label="Края" className="lg:col-start-1 lg:row-start-3">
+                <SmoothSelect value={edges} options={CARD_EDGES} onChange={setEdges} />
+              </Field>
+              <Field label="Стороны" className="lg:col-start-2 lg:row-start-3">
+                <SmoothSelect value={sides} options={CARD_SIDES} onChange={setSides} />
+              </Field>
+            </div>
+          )}
           <Field label="Имя" className="lg:col-span-2 lg:col-start-1 lg:row-start-4">
             <input className={control} value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
@@ -299,7 +382,7 @@ export function OrderWizardPage({
           </div>
           <div className="grid gap-1.5 lg:col-span-2 lg:col-start-1 lg:row-start-6">
             <p className="text-sm text-slate-500">Срок сдачи</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className={cn('grid gap-2', card ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3')}>
               {deadlines.map((item) => {
                 const active = deadline === item.id
                 return (
@@ -317,7 +400,29 @@ export function OrderWizardPage({
                   </button>
                 )
               })}
+              {card && (
+                <button
+                  type="button"
+                  onClick={() => setDeadline('custom')}
+                  className={cn(
+                    'rounded-xl border px-2 py-2.5 text-left',
+                    deadline === 'custom' ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white',
+                  )}
+                >
+                  <span className={cn('block text-sm font-semibold', deadline === 'custom' ? 'text-blue-700' : 'text-slate-900')}>Свой срок</span>
+                  <span className="mt-0.5 block text-xs text-slate-400">выберите дату</span>
+                </button>
+              )}
             </div>
+            {card && deadline === 'custom' && (
+              <input
+                type="date"
+                className={control}
+                min={new Date().toISOString().slice(0, 10)}
+                value={customDate}
+                onChange={(event) => setCustomDate(event.target.value)}
+              />
+            )}
           </div>
           <Field label="Описание задачи" className="lg:col-span-2 lg:col-start-1 lg:row-start-7 lg:h-full">
             <textarea
@@ -329,6 +434,15 @@ export function OrderWizardPage({
           </Field>
           <div className="flex flex-col gap-2 lg:col-start-3 lg:row-start-5 lg:row-end-8 lg:min-h-0">
             <UploadBox files={files} onFiles={setFiles} />
+            <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm">
+              <p className="flex items-baseline justify-between gap-3">
+                <span className="text-slate-500">Предварительно</span>
+                <span className="text-lg font-semibold text-slate-950">{money(quote.price)}</span>
+              </p>
+              <p className="mt-0.5 text-xs text-slate-400">
+                {quote.unitPrice !== null && `${quote.unitPrice} TMT × ${quantity} шт. · `}предоплата 50% — {money(split.prepay)}
+              </p>
+            </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button type="button" onClick={submit} className="h-11 rounded-xl bg-brand px-5 text-sm font-semibold text-white lg:w-full">
               Отправить заказ
@@ -418,26 +532,6 @@ function SuccessCard({
   onCopy: () => void
   onClose: () => void
 }) {
-  const [src, setSrc] = useState('')
-  const payload = [
-    order.id,
-    `${SERVICES[order.service].title} · ${order.subtype}`,
-    `Тираж ${order.quantity} шт`,
-    order.brief.format ?? '',
-    order.brief.paper ?? '',
-    money(order.price),
-  ].join('\n')
-
-  useEffect(() => {
-    let alive = true
-    QRCode.toDataURL(payload, { margin: 1, width: 220, color: { dark: '#0f172a', light: '#ffffff' } }).then((url) => {
-      if (alive) setSrc(url)
-    })
-    return () => {
-      alive = false
-    }
-  }, [payload])
-
   function download() {
     const text = [
       order.id,
@@ -446,14 +540,19 @@ function SuccessCard({
       `Тираж: ${order.quantity} шт`,
       `Формат: ${order.brief.format ?? ''}`,
       `Бумага: ${order.brief.paper ?? ''}`,
+      order.brief.edges ? `Края: ${order.brief.edges}` : '',
+      order.brief.sides ? `Стороны: ${order.brief.sides}` : '',
       `Срок: ${order.brief.deadline ?? ''}`,
       `Имя: ${order.customerName}`,
       `Компания: ${order.brief.company ?? ''}`,
       `Телефон: ${order.phone}`,
       `Почта: ${order.email}`,
       `Сумма: ${money(order.price)}`,
+      `Код получения: ${formatPickupCode(order.pickupCode)}`,
       order.comment,
-    ].join('\n')
+    ]
+      .filter(Boolean)
+      .join('\n')
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -481,23 +580,20 @@ function SuccessCard({
         <Copy className="size-4" />
       </button>
       {copied && <p className="mt-1 text-xs text-slate-400">Номер скопирован</p>}
-      <p className="mt-2 text-sm text-slate-400">Покажите этот код в типографии или дождитесь звонка менеджера</p>
-      {src && (
-        <img src={src} alt="QR-код заказа" className="mx-auto mt-6 size-44 rounded-2xl border border-slate-100 p-2 shadow-sm" />
-      )}
-      <p className="mx-auto mt-4 max-w-[220px] text-sm text-slate-700">QR-код для получения подробной информации</p>
-      <div className="mt-8 grid grid-cols-2 gap-3">
+      <p className="mt-2 text-sm text-slate-400">Номер заказа. Код и QR для получения есть ниже и в истории заказов.</p>
+      <PickupPass order={order} className="mx-auto mt-6 max-w-lg text-left" />
+      <div className="mx-auto mt-5 grid max-w-lg grid-cols-2 gap-3">
         <button
           type="button"
           onClick={download}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-50 py-3.5 text-sm font-semibold tracking-wide text-blue-600 uppercase"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-50 text-sm font-semibold tracking-wide text-blue-600 uppercase"
         >
           Скачать <Download className="size-4" />
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-xl bg-blue-600 py-3.5 text-sm font-semibold tracking-wide text-white uppercase"
+          className="h-11 rounded-xl bg-brand text-sm font-semibold text-white hover:brightness-110"
         >
           Закрыть
         </button>

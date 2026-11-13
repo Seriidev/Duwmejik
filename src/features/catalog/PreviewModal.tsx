@@ -12,42 +12,29 @@ import {
   X,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import cardPreview from '@/assets/card-preview.jpg'
 import logoBell from '@/assets/logo-bell.png'
 import { SmoothSelect } from '@/components/ui/SmoothSelect'
 import { Modal } from '@/components/ui/Modal'
 import { SavedNotice, useSavedNotice } from '@/components/ui/SavedNotice'
+import { DEFAULT_UNIT_PRICE } from '@/data/catalog'
+import { useRequireUser } from '@/hooks/useRequireUser'
 import { cn } from '@/lib/cn'
 import { useAccountStore } from '@/store/useAccountStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useCatalogStore } from '@/store/useCatalogStore'
 import type { Product } from '@/types'
 
-const slides = ['object-center', 'object-left', 'object-right', 'object-top', 'object-[70%_40%]'] as const
 const minQuantity = 60
+
+function productPhotos(product: Product) {
+  const photos = [product.image, ...(product.gallery ?? [])].filter((src): src is string => Boolean(src))
+  return [...new Set(photos)]
+}
 
 function money(price: number) {
   return `${new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(price)} TMT`
-}
-
-function unitPrice(product: Product) {
-  const rates: Record<string, number> = {
-    cards: 1.78,
-    flyers: 0.35,
-    brochures: 0.9,
-    banners: 12,
-    stickers: 0.25,
-    postcards: 0.55,
-    mugs: 18,
-    pens: 4.5,
-    notebooks: 8,
-    forms: 0.4,
-    books: 6,
-    packaging: 3.2,
-  }
-  return rates[product.categoryId] ?? 1.5
 }
 
 function specsFor(product: Product) {
@@ -85,7 +72,7 @@ export function PreviewModal({
   onClose: () => void
   onOrder?: () => void
 }) {
-  const router = useRouter()
+  const requireUser = useRequireUser()
   const user = useAuthStore((state) => state.user)
   const category = useCatalogStore((state) => state.categories.find((item) => item.id === product?.categoryId))
   const favorites = useAccountStore((state) => (user ? state.favorites[user.id] : undefined))
@@ -104,26 +91,27 @@ export function PreviewModal({
     setChoices({})
     setShowBadge(false)
     if (!product) return
+    const count = Math.max(1, productPhotos(product).length)
+    if (count < 2) return
     const timer = window.setInterval(() => {
-      setIndex((current) => (current + 1) % slides.length)
+      setIndex((current) => (current + 1) % count)
     }, 4000)
     return () => window.clearInterval(timer)
   }, [product])
 
   function save() {
-    if (!product) return
-    if (!user) {
-      router.push('/login')
-      return
-    }
+    if (!product || !requireUser() || !user) return
     const already = favorites?.includes(product.id)
     toggleFavorite(user.id, product.id)
     if (!already) savedNotice.show()
   }
 
   const specs = product ? specsFor(product) : []
-  const unit = product ? unitPrice(product) : 0
+  const unit = product ? category?.unitPrice ?? DEFAULT_UNIT_PRICE : 0
   const total = unit * quantity
+  const frames = product ? productPhotos(product) : []
+  const photos = frames.length > 0 ? frames : [cardPreview.src]
+  const slide = photos[index % photos.length]
 
   return (
     <Modal open={Boolean(product)} title={product?.title ?? 'Просмотр'} onClose={onClose} wide bare>
@@ -131,18 +119,7 @@ export function PreviewModal({
         <div className="grid items-start gap-5 lg:grid-cols-[1.15fr_0.9fr]">
           <div className="rounded-[26px] bg-blue-50 p-2">
             <div className="relative overflow-hidden rounded-[22px] bg-slate-900">
-              {slides.map((position, slideIndex) => (
-                <img
-                  key={position}
-                  src={cardPreview.src}
-                  alt=""
-                  className={cn(
-                    'aspect-square w-full object-cover transition-opacity duration-500',
-                    position,
-                    slideIndex === index ? 'opacity-100' : 'absolute inset-0 opacity-0',
-                  )}
-                />
-              ))}
+              <img src={slide} alt="" className="aspect-square w-full object-cover" />
               {popular && (
                 <button
                   type="button"
@@ -168,7 +145,7 @@ export function PreviewModal({
               <button
                 type="button"
                 aria-label="Предыдущее фото"
-                onClick={() => setIndex((current) => (current + slides.length - 1) % slides.length)}
+                onClick={() => setIndex((current) => (current + photos.length - 1) % photos.length)}
                 className="absolute top-1/2 left-3 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-slate-800 shadow-sm"
               >
                 <ChevronLeft className="size-5" />
@@ -176,28 +153,28 @@ export function PreviewModal({
               <button
                 type="button"
                 aria-label="Следующее фото"
-                onClick={() => setIndex((current) => (current + 1) % slides.length)}
+                onClick={() => setIndex((current) => (current + 1) % photos.length)}
                 className="absolute top-1/2 right-3 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-slate-800 shadow-sm"
               >
                 <ChevronRight className="size-5" />
               </button>
               <span className="absolute right-3 bottom-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-700">
-                {index + 1} / {slides.length}
+                {index + 1} / {photos.length}
               </span>
             </div>
-            <div className="mt-3 grid grid-cols-5 gap-2">
-              {slides.map((position, slideIndex) => (
+            <div className="mt-3 flex gap-2">
+              {photos.map((src, slideIndex) => (
                 <button
-                  key={position}
+                  key={`${src}-${slideIndex}`}
                   type="button"
                   aria-label={`Фото ${slideIndex + 1}`}
                   onClick={() => setIndex(slideIndex)}
                   className={cn(
-                    'aspect-[4/3] overflow-hidden rounded-xl border-2',
+                    'h-16 w-20 shrink-0 overflow-hidden rounded-xl border-2',
                     slideIndex === index ? 'border-blue-600' : 'border-transparent',
                   )}
                 >
-                  <img src={cardPreview.src} alt="" className={cn('h-full w-full object-cover', position)} />
+                  <img src={src} alt="" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>
@@ -228,7 +205,7 @@ export function PreviewModal({
             </span>
             <h3 className="mt-3 pr-10 text-3xl font-semibold tracking-tight text-slate-950">{product.title}</h3>
             <p className="mt-3 max-w-md text-sm leading-6 text-slate-500">
-              {product.description} Стильный макет с матовой ламинацией и ярким фирменным дизайном. Идеально для бизнеса, который ценит качество.
+              {product.description}
             </p>
             <div className="mt-6 flex items-baseline justify-between gap-3">
               <h4 className="text-base font-semibold text-slate-900">Характеристики</h4>
@@ -280,15 +257,15 @@ export function PreviewModal({
             <p className="mt-2 text-xs leading-5 text-slate-400">Цена иллюстративная: зависит от опций и тиража. Материалы и отделка меняют цену и срок; итог уточняется при заказе.</p>
             <div className="mt-4 flex gap-2">
               {onOrder ? (
-                <button type="button" onClick={onOrder} className="inline-flex h-12 flex-1 items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700">
+                <button type="button" onClick={onOrder} className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-brand text-sm font-semibold text-white hover:brightness-110">
                   Заказать
                 </button>
               ) : (
-                <Link href={product ? `/templates?section=orders&product=${product.id}` : '/templates?section=orders'} onClick={onClose} className="inline-flex h-12 flex-1 items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700">
+                <Link href={product ? `/templates?section=orders&product=${product.id}` : '/templates?section=orders'} onClick={onClose} className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-brand text-sm font-semibold text-white hover:brightness-110">
                   Заказать
                 </Link>
               )}
-              <button type="button" onClick={save} className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 px-6 text-sm font-semibold text-slate-800">
+              <button type="button" onClick={save} className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 px-6 text-sm font-semibold text-slate-800">
                 {saved ? 'Сохранено' : 'Сохранить'}
               </button>
             </div>

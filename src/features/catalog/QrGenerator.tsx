@@ -493,7 +493,7 @@ export function QrGenerator() {
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="inline-flex h-11 items-center gap-2 rounded-lg border border-blue-600 bg-white px-4 text-sm font-semibold text-blue-700"
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-brand bg-white px-4 text-sm font-semibold text-brand"
               >
                 <ArrowLeft className="size-4" />
                 Back
@@ -502,7 +502,7 @@ export function QrGenerator() {
                 <button
                   type="button"
                   onClick={() => goStep(step + 1)}
-                  className="inline-flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700"
+                  className="inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:brightness-110"
                 >
                   Next
                   <ArrowRight className="size-4" />
@@ -1041,7 +1041,7 @@ function DownloadForm({
           type="button"
           disabled={!ready || !target}
           onClick={() => void downloadSvg()}
-          className="inline-flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-500"
+          className="inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white hover:brightness-110 disabled:bg-slate-200 disabled:text-slate-500"
         >
           <Download className="size-4" />
           Download SVG
@@ -1050,7 +1050,7 @@ function DownloadForm({
           type="button"
           disabled={!ready || !target}
           onClick={() => void downloadPng()}
-          className="inline-flex h-11 items-center gap-2 rounded-lg border border-blue-600 bg-white px-4 text-sm font-semibold text-blue-700 disabled:border-slate-200 disabled:text-slate-400"
+          className="inline-flex h-11 items-center gap-2 rounded-xl border border-brand bg-white px-4 text-sm font-semibold text-brand disabled:border-slate-200 disabled:text-slate-400"
         >
           <Download className="size-4" />
           Download PNG

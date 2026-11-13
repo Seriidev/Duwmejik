@@ -4,7 +4,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createId } from '@/lib/format'
 
-export type NoticeVerdict = 'accepted' | 'rejected'
+export type NoticeVerdict = 'accepted' | 'rejected' | 'best'
 
 export interface DesignerNotice {
   id: string
@@ -24,6 +24,7 @@ interface NoticeState {
 }
 
 export function verdictMessage(title: string, verdict: NoticeVerdict) {
+  if (verdict === 'best') return 'Вы — лучший дизайнер месяца!'
   return verdict === 'accepted'
     ? `Работа «${title}» принята и опубликована в каталоге.`
     : `Работа «${title}» отклонена. Исправьте файл и отправьте его снова.`
